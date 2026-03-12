@@ -1,0 +1,10 @@
+[package]
+name = "notarization_package_hackathon"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+IotaNotarization = { git = "https://github.com/iotaledger/notarization.git", subdir = "notarization-move", rev = "main" }
+
+[addresses]
+notarization_package_hackathon = "0x0"
