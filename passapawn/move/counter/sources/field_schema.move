@@ -15,19 +15,14 @@ const FIELD_TYPE_BYTES: u8 = 4;
 
 const E_INVALID_FIELD_TYPE: u64 = 5;
 
-public struct FieldDescriptor has store, copy, drop {
+public struct FieldDescriptor has copy, drop, store {
     name: String,
     field_type: u8,
     required: bool,
     description: String,
 }
 
-public fun new(
-    name: String,
-    field_type: u8,
-    required: bool,
-    description: String,
-): FieldDescriptor {
+public fun new(name: String, field_type: u8, required: bool, description: String): FieldDescriptor {
     assert!(validate_field_type(field_type), E_INVALID_FIELD_TYPE);
     FieldDescriptor { name, field_type, required, description }
 }
@@ -37,6 +32,9 @@ public fun validate_field_type(field_type: u8): bool {
 }
 
 public fun name(fd: &FieldDescriptor): &String { &fd.name }
+
 public fun field_type(fd: &FieldDescriptor): u8 { fd.field_type }
+
 public fun required(fd: &FieldDescriptor): bool { fd.required }
+
 public fun description(fd: &FieldDescriptor): &String { &fd.description }

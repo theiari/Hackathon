@@ -1,100 +1,65 @@
-# IOTA dApp Starter Template
+# Passapawn MVP (Frontend + Notarization Service)
 
-This dApp was created using `@iota/create-dapp` that sets up a basic React
-Client dApp using the following tools:
+Passapawn is a permissionless IOTA credential prototype with trust-policy verification.
 
-- [React](https://react.dev/) as the UI framework
-- [TypeScript](https://www.typescriptlang.org/) for type checking
-- [Vite](https://vitejs.dev/) for build tooling
-- [Radix UI](https://www.radix-ui.com/) for pre-built UI components
-- [ESLint](https://eslint.org/) for linting
-- [`@iota/dapp-kit`](https://docs.iota.org/developer/ts-sdk/dapp-kit) for
-  connecting to wallets and loading data
-- [pnpm](https://pnpm.io/) for package management
+## 1) Local setup
 
-## Deploying your Move code
-
-### Install IOTA cli
-
-Before deploying your move code, ensure that you have installed the IOTA CLI.
-You can follow the
-[IOTA installation instruction](https://docs.iota.org/developer/getting-started/install-iota) to get
-everything set up.
-
-This template uses `testnet` by default, so we'll need to set up a testnet
-environment in the CLI:
+### Frontend
 
 ```bash
-iota client new-env --alias testnet --rpc https://fullnode.testnet.iota.org:443
-iota client switch --env testnet
+cd passapawn
+npm install
+cp .env.example .env
+npm run dev
 ```
 
-If you haven't set up an address in the iota client yet, you can use the
-following command to get a new address:
+Frontend env vars (`passapawn/.env`):
+
+- `VITE_NOTARIZATION_API_URL`: backend URL used for transaction intents and verification.
+- `VITE_IOTA_DEFAULT_NETWORK`: `devnet | testnet | mainnet`.
+- `VITE_IOTA_*_RPC_URL`: optional RPC override per network.
+- `VITE_IOTA_*_PACKAGE_ID`: package ID per network.
+
+### Backend
 
 ```bash
-iota client new-address --key-scheme secp256k1
+cd passapawn/src/notarization-service
+cp .env.example .env
+cargo run --release
 ```
 
-This well generate a new address and recover phrase for you. You can mark a
-newly created address as you active address by running the following command
-with your new address:
+Backend env vars (`passapawn/src/notarization-service/.env`):
 
-```bash
-iota client switch --address 0xYOUR_ADDRESS...
-```
+- `IOTA_NODE_URL`: JSON-RPC node endpoint.
+- `IOTA_PACKAGE_ID`: package used for generated intents.
+- `NOTARIZATION_BIND_ADDR`: API bind address, default `0.0.0.0:8080`.
+- `TRUST_ACCEPTED_DOMAINS`: comma-separated allowlist.
+- `TRUST_ACCEPTED_ISSUERS`: comma-separated allowlist.
+- `TRUST_ACCEPTED_TEMPLATE_VERSIONS`: comma-separated allowlist.
 
-We can ensure we have some IOTA in our new wallet by requesting IOTA from the
-faucet (make sure to replace the address with your address):
+Changing trust allowlists affects verifier verdicts without any contract redeploy.
 
-```bash
-curl --location --request POST 'https://faucet.testnet.iota.org/gas' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "FixedAmountRequest": {
-        "recipient": "<YOUR_ADDRESS>"
-    }
-}'
-```
+## 2) Verification policy behavior
 
-### Publishing the move package
+`POST /notarizations/:id/verify` returns:
 
-The move code for this template is located in the `move` directory. To publish
-it, you can enter the `move` directory, and publish it with the IOTA CLI:
+- `verified: boolean`
+- `status: valid | unknown_issuer | revoked | invalid_template | not_found | error`
+- `reasons: string[]`
+- `id: string`
 
-```bash
-cd move
-iota client publish --gas-budget 100000000 counter
-```
+Policy evaluation keeps the on-chain object existence check and then applies local trust allowlists.
 
-In the output there will be an object with a `"packageId"` property. You'll want
-to save that package ID to the `src/constants.ts` file as `PACKAGE_ID`:
+## 3) Privacy defaults (GDPR-safe MVP)
 
-```ts
-export const TESTNET_COUNTER_PACKAGE_ID = "<YOUR_PACKAGE_ID>";
-```
+- Frontend notarization intents default to `payload_strategy = hash`.
+- Backend does not persist credential payloads and does not log request bodies.
+- Keep raw personal/medical data off-chain; only hashes/references/governance metadata should be notarized.
 
-Now that we have published the move code, and update the package ID, we can
-start the app.
+## 4) Quick verification flow
 
-## Starting your dApp
-
-To install dependencies you can run
-
-```bash
-pnpm install
-```
-
-To start your dApp in development mode run
-
-```bash
-pnpm dev
-```
-
-## Building
-
-To build your app for deployment you can run
-
-```bash
-pnpm build
-```
+1. Start backend and frontend with configured `.env` files.
+2. Connect wallet and issue a locked or dynamic notarization from the UI.
+3. Copy object ID and run verify in UI.
+4. Update backend trust allowlists (issuer/domain/version) and restart backend.
+5. Verify again to observe policy-aware status changes.

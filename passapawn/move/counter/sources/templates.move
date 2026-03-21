@@ -1,8 +1,8 @@
 module notarization_package_hackathon::templates;
 
-use std::string::String;
-use notarization_package_hackathon::field_schema;
 use notarization_package_hackathon::credential_domain::{Self, CredentialDomain, DomainAdminCap};
+use notarization_package_hackathon::field_schema;
+use std::string::String;
 
 entry fun create_domain(
     name: String,
@@ -13,7 +13,12 @@ entry fun create_domain(
     ctx: &mut TxContext,
 ) {
     let cap = credential_domain::create_domain(
-        name, description, schema_authority_did, signers, threshold, ctx,
+        name,
+        description,
+        schema_authority_did,
+        signers,
+        threshold,
+        ctx,
     );
     transfer::public_transfer(cap, ctx.sender());
 }
@@ -31,15 +36,16 @@ entry fun submit_proposal(
 ) {
     let fields = zip_fields(field_names, field_types, field_required_flags, field_descriptions);
     credential_domain::submit_proposal(
-        domain, credential_type, fields, schema_authority_did, supersedes_opt, ctx,
+        domain,
+        credential_type,
+        fields,
+        schema_authority_did,
+        supersedes_opt,
+        ctx,
     );
 }
 
-entry fun approve_proposal(
-    domain: &mut CredentialDomain,
-    proposal_id: u64,
-    ctx: &TxContext,
-) {
+entry fun approve_proposal(domain: &mut CredentialDomain, proposal_id: u64, ctx: &TxContext) {
     credential_domain::approve_proposal(domain, proposal_id, ctx);
 }
 
@@ -68,8 +74,15 @@ entry fun decree_template(
 ) {
     let fields = zip_fields(field_names, field_types, field_required_flags, field_descriptions);
     credential_domain::decree_template(
-        cap, domain, credential_type, fields, schema_authority_did,
-        law_reference, supersedes_opt, version, ctx,
+        cap,
+        domain,
+        credential_type,
+        fields,
+        schema_authority_did,
+        law_reference,
+        supersedes_opt,
+        version,
+        ctx,
     );
 }
 

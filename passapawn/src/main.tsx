@@ -7,7 +7,7 @@ import { IotaClientProvider, WalletProvider } from "@iota/dapp-kit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Theme } from "@radix-ui/themes";
 import App from "./App.tsx";
-import { networkConfig } from "./networkConfig.ts";
+import { DEFAULT_NETWORK, networkConfig } from "./networkConfig.ts";
 
 const queryClient = new QueryClient();
 
@@ -15,7 +15,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Theme appearance="dark">
       <QueryClientProvider client={queryClient}>
-        <IotaClientProvider networks={networkConfig} defaultNetwork="testnet">
+        <IotaClientProvider networks={networkConfig} defaultNetwork={DEFAULT_NETWORK}>
           <WalletProvider autoConnect>
             <App />
           </WalletProvider>

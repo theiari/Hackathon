@@ -1,10 +1,10 @@
 module notarization_package_hackathon::credential_domain;
 
-use std::string::String;
+use iota::event;
 use iota::table::{Self, Table};
 use iota::vec_map::{Self, VecMap};
-use iota::event;
 use notarization_package_hackathon::field_schema::FieldDescriptor;
+use std::string::String;
 
 // === Error constants ===
 const E_NOT_A_SIGNER: u64 = 1;
@@ -153,11 +153,7 @@ public fun submit_proposal(
     proposal_id
 }
 
-public fun approve_proposal(
-    domain: &mut CredentialDomain,
-    proposal_id: u64,
-    ctx: &TxContext,
-) {
+public fun approve_proposal(domain: &mut CredentialDomain, proposal_id: u64, ctx: &TxContext) {
     let sender = ctx.sender();
     assert!(is_signer(domain, sender), E_NOT_A_SIGNER);
 
@@ -272,14 +268,25 @@ fun is_signer(domain: &CredentialDomain, addr: address): bool {
 // === Getters ===
 
 public fun domain_name(domain: &CredentialDomain): &String { &domain.name }
+
 public fun domain_description(domain: &CredentialDomain): &String { &domain.description }
-public fun domain_schema_authority_did(domain: &CredentialDomain): &String { &domain.schema_authority_did }
+
+public fun domain_schema_authority_did(domain: &CredentialDomain): &String {
+    &domain.schema_authority_did
+}
+
 public fun domain_signers(domain: &CredentialDomain): &vector<address> { &domain.signers }
+
 public fun domain_threshold(domain: &CredentialDomain): u64 { domain.threshold }
 
 public fun template_credential_type(t: &CredentialTypeTemplate): &String { &t.credential_type }
+
 public fun template_version(t: &CredentialTypeTemplate): u64 { t.version }
+
 public fun template_fields(t: &CredentialTypeTemplate): &vector<FieldDescriptor> { &t.fields }
+
 public fun template_deprecated(t: &CredentialTypeTemplate): bool { t.deprecated }
+
 public fun template_superseded_by(t: &CredentialTypeTemplate): &Option<ID> { &t.superseded_by }
+
 public fun template_law_reference(t: &CredentialTypeTemplate): &Option<String> { &t.law_reference }

@@ -5,26 +5,44 @@ import {
   useIotaClient,
 } from "@iota/dapp-kit";
 import { Transaction } from "@iota/iota-sdk/transactions";
-import { useNetworkVariable } from "./networkConfig";
+import { DEFAULT_NETWORK, useNetworkVariable } from "./networkConfig";
 import { useState } from "react";
+import "./App.css";
+import {
+  createDynamicIntent,
+  createLockedIntent,
+  verifyOnChain,
+  type TransactionIntentResponse,
+} from "./notarizationApi";
 
 const sectionStyle: React.CSSProperties = {
-  border: "1px solid #444",
-  borderRadius: 8,
-  padding: 16,
+  border: "1px solid #2f2f35",
+  borderRadius: 14,
+  padding: 18,
   marginBottom: 24,
+  background: "linear-gradient(180deg, #17171d 0%, #121218 100%)",
+  boxShadow: "0 8px 30px rgba(0, 0, 0, 0.25)",
 };
 const inputStyle: React.CSSProperties = {
   display: "block",
   width: "100%",
-  padding: 8,
+  padding: 10,
   marginBottom: 8,
   boxSizing: "border-box",
+  borderRadius: 10,
+  border: "1px solid #3a3a45",
+  background: "#111118",
+  color: "#f4f4f5",
 };
 const btnStyle: React.CSSProperties = {
-  padding: "8px 16px",
+  padding: "9px 16px",
   marginRight: 8,
   cursor: "pointer",
+  borderRadius: 10,
+  border: "1px solid #3f3f56",
+  background: "#1f2440",
+  color: "#eef1ff",
+  fontWeight: 600,
 };
 const smallBtnStyle: React.CSSProperties = {
   padding: "4px 10px",
@@ -48,6 +66,47 @@ interface FieldInput {
   description: string;
 }
 
+type TxState = "idle" | "waiting_wallet" | "pending_chain" | "success" | "failure";
+
+function formatStatus(state: TxState, message: string) {
+  return `[${state}] ${message}`;
+}
+
+function normalizeObjectId(value: string) {
+  return value.trim();
+}
+
+function isValidObjectId(value: string) {
+  return /^0x[a-fA-F0-9]+$/.test(normalizeObjectId(value));
+}
+
+function parsePositiveInteger(raw: string): number | null {
+  if (!/^\d+$/.test(raw.trim())) {
+    return null;
+  }
+  const numeric = Number(raw);
+  return Number.isSafeInteger(numeric) ? numeric : null;
+}
+
+function normalizeFieldInputs(fields: FieldInput[]) {
+  return fields.map((field) => ({
+    ...field,
+    name: field.name.trim(),
+    description: field.description.trim(),
+  }));
+}
+
+function formatActionError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/reject|denied|cancel/i.test(message)) {
+    return `Wallet action rejected: ${message}`;
+  }
+  if (/network|rpc|fetch|timeout/i.test(message)) {
+    return `RPC/network failure: ${message}`;
+  }
+  return message;
+}
+
 function emptyField(): FieldInput {
   return { name: "", fieldType: 0, required: true, description: "" };
 }
@@ -69,6 +128,7 @@ function FieldBuilder({
       {fields.map((f, i) => (
         <div
           key={i}
+          className="fieldBuilderRow"
           style={{
             display: "flex",
             gap: 6,
@@ -77,12 +137,14 @@ function FieldBuilder({
           }}
         >
           <input
+            className="fieldNameInput"
             style={{ flex: 2, padding: 6 }}
             placeholder="Field name"
             value={f.name}
             onChange={(e) => update(i, { name: e.target.value })}
           />
           <select
+            className="fieldTypeSelect"
             style={{ flex: 1, padding: 6 }}
             value={f.fieldType}
             onChange={(e) => update(i, { fieldType: Number(e.target.value) })}
@@ -93,7 +155,7 @@ function FieldBuilder({
               </option>
             ))}
           </select>
-          <label style={{ whiteSpace: "nowrap" }}>
+          <label className="fieldRequiredLabel" style={{ whiteSpace: "nowrap" }}>
             <input
               type="checkbox"
               checked={f.required}
@@ -102,12 +164,14 @@ function FieldBuilder({
             Req
           </label>
           <input
+            className="fieldDescriptionInput"
             style={{ flex: 2, padding: 6 }}
             placeholder="Description"
             value={f.description}
             onChange={(e) => update(i, { description: e.target.value })}
           />
           <button
+            className="fieldDeleteButton"
             style={smallBtnStyle}
             onClick={() => onChange(fields.filter((_, j) => j !== i))}
           >
@@ -128,7 +192,17 @@ function FieldBuilder({
 function StatusMessage({ text }: { text: string }) {
   if (!text) return null;
   return (
-    <p style={{ marginTop: 12, wordBreak: "break-all", fontSize: 13 }}>
+    <p
+      style={{
+        marginTop: 12,
+        wordBreak: "break-all",
+        fontSize: 13,
+        padding: "8px 10px",
+        borderRadius: 8,
+        background: "#101722",
+        border: "1px solid #243145",
+      }}
+    >
       {text}
     </p>
   );
@@ -146,7 +220,7 @@ function App() {
   const [domainDid, setDomainDid] = useState("");
   const [domainSigners, setDomainSigners] = useState("");
   const [domainThreshold, setDomainThreshold] = useState("2");
-  const [domainResult, setDomainResult] = useState("");
+  const [domainResult, setDomainResult] = useState(formatStatus("idle", "Ready"));
 
   // --- Section 2: Submit Proposal ---
   const [propDomainId, setPropDomainId] = useState("");
@@ -154,18 +228,18 @@ function App() {
   const [propFields, setPropFields] = useState<FieldInput[]>([emptyField()]);
   const [propDid, setPropDid] = useState("");
   const [propSupersedes, setPropSupersedes] = useState("");
-  const [propResult, setPropResult] = useState("");
+  const [propResult, setPropResult] = useState(formatStatus("idle", "Ready"));
 
   // --- Section 3: Approve Proposal ---
   const [approveDomainId, setApproveDomainId] = useState("");
   const [approveProposalId, setApproveProposalId] = useState("");
-  const [approveResult, setApproveResult] = useState("");
+  const [approveResult, setApproveResult] = useState(formatStatus("idle", "Ready"));
 
   // --- Section 4: Execute Proposal ---
   const [execDomainId, setExecDomainId] = useState("");
   const [execProposalId, setExecProposalId] = useState("");
   const [execVersion, setExecVersion] = useState("1");
-  const [execResult, setExecResult] = useState("");
+  const [execResult, setExecResult] = useState(formatStatus("idle", "Ready"));
 
   // --- Section 5: Decree Template ---
   const [decreeCapId, setDecreeCapId] = useState("");
@@ -178,30 +252,170 @@ function App() {
   const [decreeLawRef, setDecreeLawRef] = useState("");
   const [decreeSupersedes, setDecreeSupersedes] = useState("");
   const [decreeVersion, setDecreeVersion] = useState("1");
-  const [decreeResult, setDecreeResult] = useState("");
+  const [decreeResult, setDecreeResult] = useState(formatStatus("idle", "Ready"));
 
-  // --- Handlers ---
+  // --- Section 6: Backend + Blockchain Notarization ---
+  const [notaryData, setNotaryData] = useState("");
+  const [notaryDesc, setNotaryDesc] = useState("");
+  const [notaryMetadata, setNotaryMetadata] = useState("");
+  const [notaryDynamicMetadata, setNotaryDynamicMetadata] = useState("");
+  const [notaryObjectId, setNotaryObjectId] = useState("");
+  const [notaryResult, setNotaryResult] = useState(formatStatus("idle", "Ready"));
 
-  const createDomain = () => {
-    const signers = domainSigners
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const tx = new Transaction();
-    tx.moveCall({
-      target: `${packageId}::templates::create_domain`,
-      arguments: [
-        tx.pure.string(domainName),
-        tx.pure.string(domainDesc),
-        tx.pure.string(domainDid),
-        tx.pure.vector("address", signers),
-        tx.pure.u64(BigInt(domainThreshold)),
-      ],
-    });
+  const runTx = (
+    tx: Transaction,
+    setResult: (value: string) => void,
+    onSuccess: (digest: string) => Promise<void> | void,
+  ) => {
+    setResult(formatStatus("waiting_wallet", "Confirm the transaction in your wallet."));
     signAndExecute(
       { transaction: tx },
       {
         onSuccess: async ({ digest }) => {
+          setResult(formatStatus("pending_chain", `Submitted on-chain: ${digest}`));
+          try {
+            await onSuccess(digest);
+          } catch (error) {
+            setResult(formatStatus("failure", formatActionError(error)));
+          }
+        },
+        onError: (error) => {
+          setResult(formatStatus("failure", formatActionError(error)));
+        },
+      },
+    );
+  };
+
+  // --- Handlers ---
+
+  const executeIntent = (intent: TransactionIntentResponse, successMessage: string) => {
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${intent.package_id}::${intent.target_module}::${intent.target_function}`,
+      arguments: intent.arguments.map((arg) => {
+        if (arg.kind === "object") {
+          return tx.object(arg.object_id);
+        }
+        if (arg.kind === "pure_u64") {
+          return tx.pure.u64(BigInt(arg.value));
+        }
+        return tx.pure.string(arg.value);
+      }),
+    });
+
+    runTx(tx, setNotaryResult, async (digest) => {
+      await client.waitForTransaction({ digest });
+      setNotaryResult(formatStatus("success", `${successMessage} | TX: ${digest}`));
+    });
+  };
+
+  const issueLockedViaBackend = async () => {
+    try {
+      if (!notaryData.trim()) {
+        setNotaryResult(formatStatus("failure", "Data to notarize is required."));
+        return;
+      }
+      const intent = await createLockedIntent({
+        data: notaryData.trim(),
+        payload_strategy: "hash",
+        delete_lock: "none",
+        immutable_description: notaryDesc.trim(),
+        state_metadata: notaryMetadata.trim(),
+      });
+      executeIntent(intent, "Locked notarization submitted");
+    } catch (error) {
+      setNotaryResult(formatStatus("failure", formatActionError(error)));
+    }
+  };
+
+  const issueDynamicViaBackend = async () => {
+    try {
+      if (!notaryData.trim()) {
+        setNotaryResult(formatStatus("failure", "Data to notarize is required."));
+        return;
+      }
+      const intent = await createDynamicIntent({
+        data: notaryData.trim(),
+        payload_strategy: "hash",
+        transfer_lock: "none",
+        immutable_description: notaryDesc.trim(),
+        state_metadata: notaryMetadata.trim(),
+        updatable_metadata: notaryDynamicMetadata.trim() || undefined,
+      });
+      executeIntent(intent, "Dynamic notarization submitted");
+    } catch (error) {
+      setNotaryResult(formatStatus("failure", formatActionError(error)));
+    }
+  };
+
+  const verifyViaBackend = async () => {
+    try {
+      if (!isValidObjectId(notaryObjectId)) {
+        setNotaryResult(formatStatus("failure", "Provide a valid object ID (0x...)."));
+        return;
+      }
+      if (!notaryData.trim()) {
+        setNotaryResult(formatStatus("failure", "Data to verify is required."));
+        return;
+      }
+      setNotaryResult(formatStatus("pending_chain", "Verifying notarization on chain..."));
+      const verify = await verifyOnChain(normalizeObjectId(notaryObjectId), notaryData.trim());
+      setNotaryResult(
+        verify.verified
+          ? formatStatus("success", `Verified (${verify.status}) for ${verify.id}`)
+          : formatStatus(
+              "failure",
+              `Verification ${verify.status} for ${verify.id}${verify.reasons.length ? ` | ${verify.reasons.join(", ")}` : ""}`,
+            ),
+      );
+    } catch (error) {
+      setNotaryResult(formatStatus("failure", formatActionError(error)));
+    }
+  };
+
+  const createDomain = () => {
+    try {
+      if (!domainName || !domainDid || !domainSigners) {
+        setDomainResult(
+          formatStatus("failure", "Please fill domain name, DID and signer list."),
+        );
+        return;
+      }
+
+    const signers = domainSigners
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (!signers.length) {
+      setDomainResult(formatStatus("failure", "Add at least one signer address."));
+      return;
+    }
+
+    const thresholdNumber = parsePositiveInteger(domainThreshold);
+    if (thresholdNumber === null || thresholdNumber < 1) {
+      setDomainResult(formatStatus("failure", "Threshold must be a positive integer."));
+      return;
+    }
+
+    const invalidSigner = signers.find((signer) => !/^0x[a-fA-F0-9]+$/.test(signer));
+    if (invalidSigner) {
+      setDomainResult(formatStatus("failure", `Invalid signer address: ${invalidSigner}`));
+      return;
+    }
+
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${packageId}::templates::create_domain`,
+      arguments: [
+        tx.pure.string(domainName.trim()),
+        tx.pure.string(domainDesc.trim()),
+        tx.pure.string(domainDid.trim()),
+        tx.pure.vector("address", signers),
+        tx.pure.u64(BigInt(thresholdNumber)),
+      ],
+    });
+    runTx(tx, setDomainResult, async (digest) => {
           const result = await client.waitForTransaction({
             digest,
             options: { showObjectChanges: true },
@@ -228,78 +442,155 @@ function App() {
             setDecreeCapId(cap.objectId);
             parts.push(`AdminCap: ${cap.objectId}`);
           }
-          setDomainResult(parts.length ? parts.join(" | ") : `TX: ${digest}`);
-        },
-      },
-    );
+          setDomainResult(
+            formatStatus("success", parts.length ? parts.join(" | ") : `TX: ${digest}`),
+          );
+    });
+    } catch (error) {
+      setDomainResult(formatStatus("failure", formatActionError(error)));
+    }
   };
 
   const submitProposal = () => {
+    try {
+    if (!propDomainId || !propCredType || !propDid) {
+      setPropResult(
+        formatStatus("failure", "Please provide Domain ID, Credential Type and DID."),
+      );
+      return;
+    }
+
+    if (!isValidObjectId(propDomainId)) {
+      setPropResult(formatStatus("failure", "Domain ID must be a valid object ID (0x...)."));
+      return;
+    }
+
+    const normalizedFields = normalizeFieldInputs(propFields);
+    if (!normalizedFields.length || normalizedFields.some((field) => !field.name)) {
+      setPropResult(
+        formatStatus("failure", "Every schema field must have a non-empty name."),
+      );
+      return;
+    }
+
+    if (
+      normalizedFields.some(
+        (field) => field.fieldType < 0 || field.fieldType > 4 || !Number.isInteger(field.fieldType),
+      )
+    ) {
+      setPropResult(formatStatus("failure", "Field types must be integers between 0 and 4."));
+      return;
+    }
+
+    const supersedesId = propSupersedes.trim();
+    if (supersedesId && !isValidObjectId(supersedesId)) {
+      setPropResult(
+        formatStatus("failure", "Supersedes Template ID must be a valid object ID (0x...)."),
+      );
+      return;
+    }
+
     const tx = new Transaction();
-    const names = propFields.map((f) => f.name);
-    const types = propFields.map((f) => f.fieldType);
-    const required = propFields.map((f) => f.required);
-    const descs = propFields.map((f) => f.description);
+    const names = normalizedFields.map((f) => f.name);
+    const types = normalizedFields.map((f) => f.fieldType);
+    const required = normalizedFields.map((f) => f.required);
+    const descs = normalizedFields.map((f) => f.description);
 
     const args = [
-      tx.object(propDomainId),
-      tx.pure.string(propCredType),
+      tx.object(normalizeObjectId(propDomainId)),
+      tx.pure.string(propCredType.trim()),
       tx.pure.vector("string", names),
       tx.pure.vector("u8", types),
       tx.pure.vector("bool", required),
       tx.pure.vector("string", descs),
-      tx.pure.string(propDid),
-      propSupersedes
-        ? tx.pure.option("address", propSupersedes)
+      tx.pure.string(propDid.trim()),
+      supersedesId
+        ? tx.pure.option("address", supersedesId)
         : tx.pure.option("address", null),
     ];
     tx.moveCall({
       target: `${packageId}::templates::submit_proposal`,
       arguments: args,
     });
-    signAndExecute(
-      { transaction: tx },
-      {
-        onSuccess: ({ digest }) => {
-          setPropResult(`Proposal submitted! TX: ${digest}`);
-        },
-      },
-    );
+    runTx(tx, setPropResult, (digest) => {
+      setPropResult(formatStatus("success", `Proposal submitted! TX: ${digest}`));
+    });
+    } catch (error) {
+      setPropResult(formatStatus("failure", formatActionError(error)));
+    }
   };
 
   const approveProposal = () => {
+    try {
+    if (!approveDomainId || !approveProposalId) {
+      setApproveResult(
+        formatStatus("failure", "Please provide Domain ID and Proposal ID."),
+      );
+      return;
+    }
+
+    if (!isValidObjectId(approveDomainId)) {
+      setApproveResult(
+        formatStatus("failure", "Domain ID must be a valid object ID (0x...)."),
+      );
+      return;
+    }
+
+    const proposalId = parsePositiveInteger(approveProposalId);
+    if (proposalId === null) {
+      setApproveResult(formatStatus("failure", "Proposal ID must be a number."));
+      return;
+    }
+
     const tx = new Transaction();
     tx.moveCall({
       target: `${packageId}::templates::approve_proposal`,
       arguments: [
-        tx.object(approveDomainId),
-        tx.pure.u64(BigInt(approveProposalId)),
+        tx.object(normalizeObjectId(approveDomainId)),
+        tx.pure.u64(BigInt(proposalId)),
       ],
     });
-    signAndExecute(
-      { transaction: tx },
-      {
-        onSuccess: ({ digest }) => {
-          setApproveResult(`Approved! TX: ${digest}`);
-        },
-      },
-    );
+    runTx(tx, setApproveResult, (digest) => {
+      setApproveResult(formatStatus("success", `Approved! TX: ${digest}`));
+    });
+    } catch (error) {
+      setApproveResult(formatStatus("failure", formatActionError(error)));
+    }
   };
 
   const executeProposal = () => {
+    try {
+    if (!execDomainId || !execProposalId || !execVersion) {
+      setExecResult(
+        formatStatus("failure", "Please provide Domain ID, Proposal ID and Version."),
+      );
+      return;
+    }
+
+    if (!isValidObjectId(execDomainId)) {
+      setExecResult(formatStatus("failure", "Domain ID must be a valid object ID (0x...)."));
+      return;
+    }
+
+    const proposalId = parsePositiveInteger(execProposalId);
+    const version = parsePositiveInteger(execVersion);
+    if (proposalId === null || version === null || version < 1) {
+      setExecResult(
+        formatStatus("failure", "Proposal ID and Version must be valid positive integers."),
+      );
+      return;
+    }
+
     const tx = new Transaction();
     tx.moveCall({
       target: `${packageId}::templates::execute_proposal`,
       arguments: [
-        tx.object(execDomainId),
-        tx.pure.u64(BigInt(execProposalId)),
-        tx.pure.u64(BigInt(execVersion)),
+        tx.object(normalizeObjectId(execDomainId)),
+        tx.pure.u64(BigInt(proposalId)),
+        tx.pure.u64(BigInt(version)),
       ],
     });
-    signAndExecute(
-      { transaction: tx },
-      {
-        onSuccess: async ({ digest }) => {
+    runTx(tx, setExecResult, async (digest) => {
           const result = await client.waitForTransaction({
             digest,
             options: { showObjectChanges: true },
@@ -311,43 +602,90 @@ function App() {
           );
           setExecResult(
             tpl && "objectId" in tpl
-              ? `Template created: ${tpl.objectId} | TX: ${digest}`
-              : `Executed! TX: ${digest}`,
+              ? formatStatus("success", `Template created: ${tpl.objectId} | TX: ${digest}`)
+              : formatStatus("success", `Executed! TX: ${digest}`),
           );
-        },
-      },
-    );
+    });
+    } catch (error) {
+      setExecResult(formatStatus("failure", formatActionError(error)));
+    }
   };
 
   const decreeTemplate = () => {
+    try {
+    if (!decreeCapId || !decreeDomainId || !decreeCredType || !decreeDid || !decreeVersion) {
+      setDecreeResult(
+        formatStatus(
+          "failure",
+          "Please provide cap, domain, credential type, DID and version.",
+        ),
+      );
+      return;
+    }
+
+    if (!isValidObjectId(decreeCapId) || !isValidObjectId(decreeDomainId)) {
+      setDecreeResult(
+        formatStatus("failure", "Cap ID and Domain ID must be valid object IDs (0x...)."),
+      );
+      return;
+    }
+
+    const version = parsePositiveInteger(decreeVersion);
+    if (version === null || version < 1) {
+      setDecreeResult(formatStatus("failure", "Version must be a positive integer."));
+      return;
+    }
+
+    const normalizedFields = normalizeFieldInputs(decreeFields);
+    if (!normalizedFields.length || normalizedFields.some((field) => !field.name)) {
+      setDecreeResult(
+        formatStatus("failure", "Every schema field must have a non-empty name."),
+      );
+      return;
+    }
+
+    if (
+      normalizedFields.some(
+        (field) => field.fieldType < 0 || field.fieldType > 4 || !Number.isInteger(field.fieldType),
+      )
+    ) {
+      setDecreeResult(formatStatus("failure", "Field types must be integers between 0 and 4."));
+      return;
+    }
+
+    const supersedesId = decreeSupersedes.trim();
+    if (supersedesId && !isValidObjectId(supersedesId)) {
+      setDecreeResult(
+        formatStatus("failure", "Supersedes Template ID must be a valid object ID (0x...)."),
+      );
+      return;
+    }
+
     const tx = new Transaction();
-    const names = decreeFields.map((f) => f.name);
-    const types = decreeFields.map((f) => f.fieldType);
-    const required = decreeFields.map((f) => f.required);
-    const descs = decreeFields.map((f) => f.description);
+    const names = normalizedFields.map((f) => f.name);
+    const types = normalizedFields.map((f) => f.fieldType);
+    const required = normalizedFields.map((f) => f.required);
+    const descs = normalizedFields.map((f) => f.description);
 
     tx.moveCall({
       target: `${packageId}::templates::decree_template`,
       arguments: [
-        tx.object(decreeCapId),
-        tx.object(decreeDomainId),
-        tx.pure.string(decreeCredType),
+        tx.object(normalizeObjectId(decreeCapId)),
+        tx.object(normalizeObjectId(decreeDomainId)),
+        tx.pure.string(decreeCredType.trim()),
         tx.pure.vector("string", names),
         tx.pure.vector("u8", types),
         tx.pure.vector("bool", required),
         tx.pure.vector("string", descs),
-        tx.pure.string(decreeDid),
-        tx.pure.string(decreeLawRef),
-        decreeSupersedes
-          ? tx.pure.option("address", decreeSupersedes)
+        tx.pure.string(decreeDid.trim()),
+        tx.pure.string(decreeLawRef.trim()),
+        supersedesId
+          ? tx.pure.option("address", supersedesId)
           : tx.pure.option("address", null),
-        tx.pure.u64(BigInt(decreeVersion)),
+        tx.pure.u64(BigInt(version)),
       ],
     });
-    signAndExecute(
-      { transaction: tx },
-      {
-        onSuccess: async ({ digest }) => {
+    runTx(tx, setDecreeResult, async (digest) => {
           const result = await client.waitForTransaction({
             digest,
             options: { showObjectChanges: true },
@@ -359,17 +697,18 @@ function App() {
           );
           setDecreeResult(
             tpl && "objectId" in tpl
-              ? `Decreed template: ${tpl.objectId} | TX: ${digest}`
-              : `Decreed! TX: ${digest}`,
+              ? formatStatus("success", `Decreed template: ${tpl.objectId} | TX: ${digest}`)
+              : formatStatus("success", `Decreed! TX: ${digest}`),
           );
-        },
-      },
-    );
+    });
+    } catch (error) {
+      setDecreeResult(formatStatus("failure", formatActionError(error)));
+    }
   };
 
   if (!account) {
     return (
-      <div style={{ padding: 32, textAlign: "center" }}>
+      <div className="connectScreen" style={{ padding: 32, textAlign: "center" }}>
         <h1>Passapawn — Credential Trust Registry</h1>
         <p>Please connect your wallet</p>
         <ConnectButton />
@@ -378,8 +717,19 @@ function App() {
   }
 
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: 24 }}>
+    <div
+      className="appContainer"
+      style={{
+        maxWidth: 760,
+        margin: "0 auto",
+        padding: 24,
+        background:
+          "radial-gradient(circle at top, rgba(43,71,135,0.25) 0%, rgba(12,12,18,0.15) 40%), #0d0d12",
+        minHeight: "100vh",
+      }}
+    >
       <div
+        className="appHeader"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -390,9 +740,12 @@ function App() {
         <h1 style={{ margin: 0 }}>Passapawn</h1>
         <ConnectButton />
       </div>
+      <p className="networkInfo" style={{ marginTop: -10, marginBottom: 20, color: "#9ea7c9" }}>
+        Network: {DEFAULT_NETWORK} • Package: {packageId}
+      </p>
 
       {/* Section 1 — Create Domain */}
-      <div style={sectionStyle}>
+      <div className="appSection" style={sectionStyle}>
         <h2>1 — Create Credential Domain</h2>
         <input
           style={inputStyle}
@@ -424,14 +777,16 @@ function App() {
           value={domainThreshold}
           onChange={(e) => setDomainThreshold(e.target.value)}
         />
-        <button style={btnStyle} onClick={createDomain}>
-          Create Domain
-        </button>
+        <div className="actionRow">
+          <button className="actionButton" style={btnStyle} onClick={createDomain}>
+            Create Domain
+          </button>
+        </div>
         <StatusMessage text={domainResult} />
       </div>
 
       {/* Section 2 — Submit Proposal */}
-      <div style={sectionStyle}>
+      <div className="appSection" style={sectionStyle}>
         <h2>2 — Submit Schema Proposal</h2>
         <input
           style={inputStyle}
@@ -458,14 +813,16 @@ function App() {
           value={propSupersedes}
           onChange={(e) => setPropSupersedes(e.target.value)}
         />
-        <button style={btnStyle} onClick={submitProposal}>
-          Submit Proposal
-        </button>
+        <div className="actionRow">
+          <button className="actionButton" style={btnStyle} onClick={submitProposal}>
+            Submit Proposal
+          </button>
+        </div>
         <StatusMessage text={propResult} />
       </div>
 
       {/* Section 3 — Approve Proposal */}
-      <div style={sectionStyle}>
+      <div className="appSection" style={sectionStyle}>
         <h2>3 — Approve Proposal</h2>
         <input
           style={inputStyle}
@@ -479,14 +836,16 @@ function App() {
           value={approveProposalId}
           onChange={(e) => setApproveProposalId(e.target.value)}
         />
-        <button style={btnStyle} onClick={approveProposal}>
-          Approve
-        </button>
+        <div className="actionRow">
+          <button className="actionButton" style={btnStyle} onClick={approveProposal}>
+            Approve
+          </button>
+        </div>
         <StatusMessage text={approveResult} />
       </div>
 
       {/* Section 4 — Execute Proposal */}
-      <div style={sectionStyle}>
+      <div className="appSection" style={sectionStyle}>
         <h2>4 — Execute Proposal</h2>
         <input
           style={inputStyle}
@@ -506,14 +865,16 @@ function App() {
           value={execVersion}
           onChange={(e) => setExecVersion(e.target.value)}
         />
-        <button style={btnStyle} onClick={executeProposal}>
-          Execute
-        </button>
+        <div className="actionRow">
+          <button className="actionButton" style={btnStyle} onClick={executeProposal}>
+            Execute
+          </button>
+        </div>
         <StatusMessage text={execResult} />
       </div>
 
       {/* Section 5 — Decree Template */}
-      <div style={sectionStyle}>
+      <div className="appSection" style={sectionStyle}>
         <h2>5 — Decree Template (Admin Fast-Track)</h2>
         <input
           style={inputStyle}
@@ -558,10 +919,65 @@ function App() {
           value={decreeVersion}
           onChange={(e) => setDecreeVersion(e.target.value)}
         />
-        <button style={btnStyle} onClick={decreeTemplate}>
-          Decree
-        </button>
+        <div className="actionRow">
+          <button className="actionButton" style={btnStyle} onClick={decreeTemplate}>
+            Decree
+          </button>
+        </div>
         <StatusMessage text={decreeResult} />
+      </div>
+
+      {/* Section 6 — Backend + Blockchain */}
+      <div className="appSection" style={sectionStyle}>
+        <h2>6 — Notarization (Backend + Blockchain)</h2>
+        <p style={{ marginTop: -6, color: "#9ea7c9", fontSize: 13 }}>
+          Privacy default: notarization intents use hash-first payload strategy; avoid raw personal or medical data.
+        </p>
+        <input
+          style={inputStyle}
+          placeholder="Data to notarize"
+          value={notaryData}
+          onChange={(e) => setNotaryData(e.target.value)}
+        />
+        <input
+          style={inputStyle}
+          placeholder="Immutable Description"
+          value={notaryDesc}
+          onChange={(e) => setNotaryDesc(e.target.value)}
+        />
+        <input
+          style={inputStyle}
+          placeholder="State Metadata"
+          value={notaryMetadata}
+          onChange={(e) => setNotaryMetadata(e.target.value)}
+        />
+        <input
+          style={inputStyle}
+          placeholder="Dynamic Metadata (optional)"
+          value={notaryDynamicMetadata}
+          onChange={(e) => setNotaryDynamicMetadata(e.target.value)}
+        />
+        <div className="actionRow">
+          <button className="actionButton" style={btnStyle} onClick={issueLockedViaBackend}>
+            Issue Locked
+          </button>
+          <button className="actionButton" style={btnStyle} onClick={issueDynamicViaBackend}>
+            Issue Dynamic
+          </button>
+        </div>
+
+        <input
+          style={{ ...inputStyle, marginTop: 12 }}
+          placeholder="On-chain Object ID to verify"
+          value={notaryObjectId}
+          onChange={(e) => setNotaryObjectId(e.target.value)}
+        />
+        <div className="actionRow">
+          <button className="actionButton" style={btnStyle} onClick={verifyViaBackend}>
+            Verify On-Chain
+          </button>
+        </div>
+        <StatusMessage text={notaryResult} />
       </div>
     </div>
   );
