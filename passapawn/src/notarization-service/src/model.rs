@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -67,16 +68,32 @@ pub enum TransactionArg {
 #[serde(rename_all = "snake_case")]
 pub enum VerificationStatus {
     Valid,
-    UnknownIssuer,
-    Revoked,
-    InvalidTemplate,
     NotFound,
-    Error,
+    Revoked,
+    UnknownIssuer,
+    UnknownDomain,
+    InvalidTemplate,
+    StaleTemplate,
+    PolicyError,
+    Disputed,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct VerificationVerdict {
+    pub id: String,
     pub verified: bool,
     pub status: VerificationStatus,
+    pub summary: String,
     pub reasons: Vec<String>,
+    pub issuer: Option<Value>,
+    pub domain: Option<Value>,
+    pub template: Option<Value>,
+    pub revocation: Option<Value>,
+    pub dispute: Option<Value>,
+    pub policy_version: String,
+    pub checked_at: String,
+    pub evidence: Option<Value>,
+    pub latency_ms: u64,
+    pub cache_hit: bool,
+    pub compat_notice: Option<String>,
 }

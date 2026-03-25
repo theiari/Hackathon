@@ -1,0 +1,22 @@
+{
+  "version": "policy-v1",
+  "updated_at": "2026-03-24T00:00:00Z",
+  "trusted_domains": [
+    "did:iota:domain:scuola-guida-milano"
+  ],
+  "trusted_issuers": [
+    "did:iota:issuer:autoscuola-rossi"
+  ],
+  "trusted_templates": [
+    {
+      "template_id": "patente-a2",
+      "allowed_versions": ["1", "2"],
+      "min_version": 1
+    }
+  ],
+  "trusted_template_versions": ["1", "2"],
+  "blocked_issuers": [],
+  "revoked_credentials": {},
+  "disputes": {},
+  "dispute_default_disposition": "warning"
+}

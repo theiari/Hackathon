@@ -13,6 +13,7 @@ import {
   createLockedIntent,
   verifyOnChain,
   type TransactionIntentResponse,
+  type VerifyResponse,
 } from "./notarizationApi";
 
 const sectionStyle: React.CSSProperties = {
@@ -66,6 +67,11 @@ interface FieldInput {
   description: string;
 }
 
+interface VerifyTimelineEntry {
+  capturedAt: string;
+  response: VerifyResponse;
+}
+
 type TxState = "idle" | "waiting_wallet" | "pending_chain" | "success" | "failure";
 
 function formatStatus(state: TxState, message: string) {
@@ -109,6 +115,12 @@ function formatActionError(error: unknown) {
 
 function emptyField(): FieldInput {
   return { name: "", fieldType: 0, required: true, description: "" };
+}
+
+function toFilterString(value: unknown): string {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return JSON.stringify(value);
 }
 
 function FieldBuilder({
@@ -261,6 +273,13 @@ function App() {
   const [notaryDynamicMetadata, setNotaryDynamicMetadata] = useState("");
   const [notaryObjectId, setNotaryObjectId] = useState("");
   const [notaryResult, setNotaryResult] = useState(formatStatus("idle", "Ready"));
+  const [verifyDetails, setVerifyDetails] = useState<VerifyResponse | null>(null);
+  const [verifyTimeline, setVerifyTimeline] = useState<VerifyTimelineEntry[]>([]);
+  const [filterIssuer, setFilterIssuer] = useState("");
+  const [filterDomain, setFilterDomain] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
 
   const runTx = (
     tx: Transaction,
@@ -322,6 +341,7 @@ function App() {
         immutable_description: notaryDesc.trim(),
         state_metadata: notaryMetadata.trim(),
       });
+      setVerifyDetails(null);
       executeIntent(intent, "Locked notarization submitted");
     } catch (error) {
       setNotaryResult(formatStatus("failure", formatActionError(error)));
@@ -342,6 +362,7 @@ function App() {
         state_metadata: notaryMetadata.trim(),
         updatable_metadata: notaryDynamicMetadata.trim() || undefined,
       });
+      setVerifyDetails(null);
       executeIntent(intent, "Dynamic notarization submitted");
     } catch (error) {
       setNotaryResult(formatStatus("failure", formatActionError(error)));
@@ -360,17 +381,70 @@ function App() {
       }
       setNotaryResult(formatStatus("pending_chain", "Verifying notarization on chain..."));
       const verify = await verifyOnChain(normalizeObjectId(notaryObjectId), notaryData.trim());
+      setVerifyDetails(verify);
+      setVerifyTimeline((prev) => [
+        { capturedAt: new Date().toISOString(), response: verify },
+        ...prev,
+      ]);
       setNotaryResult(
         verify.verified
-          ? formatStatus("success", `Verified (${verify.status}) for ${verify.id}`)
+          ? formatStatus("success", `${verify.summary} (${verify.status}) for ${verify.id}`)
           : formatStatus(
               "failure",
-              `Verification ${verify.status} for ${verify.id}${verify.reasons.length ? ` | ${verify.reasons.join(", ")}` : ""}`,
+              `${verify.summary} (${verify.status}) for ${verify.id}${verify.reasons.length ? ` | ${verify.reasons.join(", ")}` : ""}`,
             ),
       );
     } catch (error) {
       setNotaryResult(formatStatus("failure", formatActionError(error)));
     }
+  };
+
+  const filteredTimeline = verifyTimeline.filter((entry) => {
+    const issuer = toFilterString(entry.response.issuer).toLowerCase();
+    const domain = toFilterString(entry.response.domain).toLowerCase();
+    const status = entry.response.status.toLowerCase();
+    const captured = new Date(entry.capturedAt).getTime();
+    const from = filterDateFrom ? new Date(filterDateFrom).getTime() : Number.NEGATIVE_INFINITY;
+    const to = filterDateTo ? new Date(filterDateTo).getTime() : Number.POSITIVE_INFINITY;
+
+    return (
+      (!filterIssuer.trim() || issuer.includes(filterIssuer.trim().toLowerCase())) &&
+      (!filterDomain.trim() || domain.includes(filterDomain.trim().toLowerCase())) &&
+      (!filterStatus.trim() || status.includes(filterStatus.trim().toLowerCase())) &&
+      captured >= from &&
+      captured <= to
+    );
+  });
+
+  const exportTimelineAsJson = () => {
+    const blob = new Blob([JSON.stringify(filteredTimeline, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "verification-report.json";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportTimelineAsSummary = () => {
+    const summary = filteredTimeline
+      .map((entry) => {
+        const response = entry.response;
+        return `${entry.capturedAt} | ${response.id} | ${response.status} | ${response.summary} | policy=${response.policy_version} | latency_ms=${response.latency_ms} | cache_hit=${response.cache_hit}`;
+      })
+      .join("\n");
+
+    const blob = new Blob([summary || "No entries in current filter."], {
+      type: "text/plain;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "verification-report.txt";
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   const createDomain = () => {
@@ -977,7 +1051,163 @@ function App() {
             Verify On-Chain
           </button>
         </div>
+        {verifyDetails && (
+          <div
+            style={{
+              marginTop: 12,
+              border: "1px solid #2a3550",
+              borderRadius: 10,
+              padding: 12,
+              background: "#0f1522",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+              <strong>Trust verdict: {verifyDetails.status}</strong>
+              <span
+                style={{
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  border: "1px solid #3e4c6d",
+                  background: verifyDetails.verified ? "#132f1e" : "#3b1d1d",
+                  color: verifyDetails.verified ? "#9be6b3" : "#f0b4b4",
+                  fontSize: 12,
+                }}
+              >
+                {verifyDetails.verified ? "Policy-trusted" : "Policy-rejected"}
+              </span>
+            </div>
+            <p style={{ margin: "8px 0", color: "#c8d2ef" }}>{verifyDetails.summary}</p>
+            <p style={{ margin: "6px 0", fontSize: 12, color: "#9ea7c9" }}>
+              On-chain existence: {verifyDetails.status === "not_found" ? "not found" : "found"}
+            </p>
+            <p style={{ margin: "6px 0", fontSize: 12, color: "#9ea7c9" }}>
+              Policy version: {verifyDetails.policy_version} • Checked: {verifyDetails.checked_at}
+            </p>
+            <p style={{ margin: "6px 0", fontSize: 12, color: "#9ea7c9" }}>
+              Request ID: {verifyDetails.request_id}
+            </p>
+            <p style={{ margin: "6px 0", fontSize: 12, color: "#9ea7c9" }}>
+              Latency: {verifyDetails.latency_ms} ms • Cache hit: {verifyDetails.cache_hit ? "yes" : "no"}
+            </p>
+            {verifyDetails.compat_notice && (
+              <p style={{ margin: "6px 0", fontSize: 12, color: "#f7d7a2" }}>
+                Compatibility: {verifyDetails.compat_notice}
+              </p>
+            )}
+            {verifyDetails.reasons.length > 0 && (
+              <p style={{ margin: "6px 0", fontSize: 12, color: "#d3dbf3" }}>
+                Reasons: {verifyDetails.reasons.join(", ")}
+              </p>
+            )}
+            <p style={{ margin: "6px 0", fontSize: 12, color: "#9ea7c9" }}>
+              Issuer: {verifyDetails.issuer ? JSON.stringify(verifyDetails.issuer) : "n/a"}
+            </p>
+            <p style={{ margin: "6px 0", fontSize: 12, color: "#9ea7c9" }}>
+              Domain: {verifyDetails.domain ? JSON.stringify(verifyDetails.domain) : "n/a"}
+            </p>
+            <p style={{ margin: "6px 0", fontSize: 12, color: "#9ea7c9" }}>
+              Template: {verifyDetails.template ? JSON.stringify(verifyDetails.template) : "n/a"}
+            </p>
+            {Boolean(verifyDetails.revocation) && (
+              <p style={{ margin: "6px 0", fontSize: 12, color: "#f0b4b4" }}>
+                Revocation: {JSON.stringify(verifyDetails.revocation)}
+              </p>
+            )}
+            {Boolean(verifyDetails.dispute) && (
+              <p style={{ margin: "6px 0", fontSize: 12, color: "#f7d7a2" }}>
+                Dispute: {JSON.stringify(verifyDetails.dispute)}
+              </p>
+            )}
+            {Boolean(verifyDetails.evidence) && (
+              <p style={{ margin: "6px 0", fontSize: 12, color: "#d3dbf3" }}>
+                Evidence: {JSON.stringify(verifyDetails.evidence)}
+              </p>
+            )}
+          </div>
+        )}
         <StatusMessage text={notaryResult} />
+      </div>
+
+      {/* Section 7 — Verifier Console v3 */}
+      <div className="appSection" style={sectionStyle}>
+        <h2>7 — Verifier Console v3</h2>
+        <p style={{ marginTop: -6, color: "#9ea7c9", fontSize: 13 }}>
+          Investigate verification outcomes with timeline, filters, and exportable reports.
+        </p>
+        <input
+          style={inputStyle}
+          placeholder="Filter by issuer"
+          value={filterIssuer}
+          onChange={(e) => setFilterIssuer(e.target.value)}
+        />
+        <input
+          style={inputStyle}
+          placeholder="Filter by domain"
+          value={filterDomain}
+          onChange={(e) => setFilterDomain(e.target.value)}
+        />
+        <input
+          style={inputStyle}
+          placeholder="Filter by status"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        />
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            style={{ ...inputStyle, marginBottom: 8 }}
+            type="datetime-local"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+          />
+          <input
+            style={{ ...inputStyle, marginBottom: 8 }}
+            type="datetime-local"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+          />
+        </div>
+        <div className="actionRow">
+          <button className="actionButton" style={btnStyle} onClick={exportTimelineAsJson}>
+            Export JSON Report
+          </button>
+          <button className="actionButton" style={btnStyle} onClick={exportTimelineAsSummary}>
+            Export Summary Report
+          </button>
+        </div>
+        <div style={{ marginTop: 10, fontSize: 12, color: "#9ea7c9" }}>
+          Results: {filteredTimeline.length} / {verifyTimeline.length}
+        </div>
+        <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+          {filteredTimeline.slice(0, 30).map((entry) => (
+            <div
+              key={`${entry.response.request_id}-${entry.capturedAt}`}
+              style={{
+                border: "1px solid #2a3550",
+                borderRadius: 10,
+                padding: 10,
+                background: "#0f1522",
+                fontSize: 12,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                <strong>{entry.response.status}</strong>
+                <span>{entry.capturedAt}</span>
+              </div>
+              <p style={{ margin: "6px 0" }}>{entry.response.summary}</p>
+              <p style={{ margin: "4px 0", color: "#9ea7c9" }}>
+                ID: {entry.response.id} • policy={entry.response.policy_version} • latency={entry.response.latency_ms}ms • cache={entry.response.cache_hit ? "hit" : "miss"}
+              </p>
+              {entry.response.reasons.length > 0 && (
+                <p style={{ margin: "4px 0", color: "#d3dbf3" }}>Reasons: {entry.response.reasons.join(", ")}</p>
+              )}
+              {Boolean(entry.response.evidence) && (
+                <p style={{ margin: "4px 0", color: "#d3dbf3" }}>
+                  Evidence: {JSON.stringify(entry.response.evidence)}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

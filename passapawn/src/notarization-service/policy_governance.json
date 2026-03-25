@@ -1,0 +1,7 @@
+{
+  "active_policy_version": "policy-v1",
+  "drafts": {},
+  "changelog": [],
+  "rollback_stack": [],
+  "freeze_writes": false
+}

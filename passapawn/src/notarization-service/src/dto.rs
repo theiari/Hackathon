@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use crate::model::{
     PayloadStrategy, DeleteLock, TransferLock, TransactionArg, TransactionIntent
 };
+use crate::trust_registry::DisputeDisposition;
+use crate::trust_registry::TrustPolicyData;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateLockedRequest {
@@ -42,6 +44,92 @@ pub struct TransferDynamicRequest {
 #[derive(Debug, Deserialize)]
 pub struct VerifyRequest {
     pub data: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RevokeCredentialRequest {
+    pub target_id: String,
+    pub reason_code: String,
+    pub evidence_id: String,
+    pub revoked_by: String,
+    pub domain: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct OpenDisputeRequest {
+    pub opened_by: String,
+    pub target_id: String,
+    pub reason: String,
+    pub disposition: Option<DisputeDisposition>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResolveDisputeRequest {
+    pub resolved_by: String,
+    pub resolution_note: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PolicyDraftRequest {
+    pub policy_version: String,
+    pub policy: TrustPolicyData,
+    pub change_author: String,
+    pub change_note: Option<String>,
+    pub signature: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PolicyActivateRequest {
+    pub policy_version: String,
+    pub change_author: String,
+    pub change_note: Option<String>,
+    pub signature: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PolicyRollbackRequest {
+    pub target_policy_version: String,
+    pub change_author: String,
+    pub change_note: Option<String>,
+    pub signature: String,
+    pub freeze_policy: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct OnboardingRequestCreate {
+    pub organization_name: String,
+    pub issuer_profile: String,
+    pub domain_mapping: String,
+    pub signer_verification: String,
+    pub opened_by: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct OnboardingReviewRequest {
+    pub onboarding_id: String,
+    pub reviewed_by: String,
+    pub approve: bool,
+    pub review_note: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct OnboardingActivateRequest {
+    pub onboarding_id: String,
+    pub activated_by: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LaunchModeRequest {
+    pub mode: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EmergencyRollbackRequest {
+    pub target_policy_version: String,
+    pub change_author: String,
+    pub signature: String,
+    pub freeze_policy: Option<bool>,
+    pub reason: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

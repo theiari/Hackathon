@@ -17,8 +17,30 @@ export interface TransactionIntentResponse {
 export interface VerifyResponse {
   id: string;
   verified: boolean;
-  status: "valid" | "unknown_issuer" | "revoked" | "invalid_template" | "not_found" | "error";
+  status:
+    | "valid"
+    | "not_found"
+    | "revoked"
+    | "unknown_issuer"
+    | "unknown_domain"
+    | "invalid_template"
+    | "stale_template"
+    | "policy_error"
+    | "disputed";
+  summary: string;
   reasons: string[];
+  issuer?: unknown;
+  domain?: unknown;
+  template?: unknown;
+  revocation?: unknown;
+  dispute?: unknown;
+  policy_version: string;
+  checked_at: string;
+  request_id: string;
+  evidence?: unknown;
+  latency_ms: number;
+  cache_hit: boolean;
+  compat_notice?: string;
 }
 
 const API_BASE = import.meta.env.VITE_NOTARIZATION_API_URL ?? "http://127.0.0.1:8080";
@@ -60,5 +82,5 @@ export function createDynamicIntent(payload: {
 }
 
 export function verifyOnChain(id: string, data: string) {
-  return postJson<VerifyResponse>(`/notarizations/${id}/verify`, { data });
+  return postJson<VerifyResponse>(`/api/v2/notarizations/${id}/verify`, { data });
 }
