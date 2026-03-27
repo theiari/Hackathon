@@ -1,4 +1,5 @@
-export const DEVNET_PACKAGE_ID = "0xbc6b8d122ab9b277e9ba4d1173bc62fdbdd07f2f4935f6f55327f983833b9afb";
+// TODO: replace {NEW_PACKAGE_ID} after redeploy.
+export const DEVNET_PACKAGE_ID = "0x788410411974bcec8a75ccfc959038478e8c42d6c54e6977b20b8d5a1d8f7c36";
 export const TESTNET_PACKAGE_ID = "0xTODO";
 export const MAINNET_PACKAGE_ID = "0xTODO";
 export type NotarizationMethod = "locked" | "dynamic";

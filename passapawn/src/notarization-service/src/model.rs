@@ -56,11 +56,20 @@ pub enum TransactionArg {
     Object {
         object_id: String,
     },
+    PureId {
+        value: String,
+    },
+    PureBytes {
+        value: Vec<u8>,
+    },
     PureString {
         value: String,
     },
     PureU64 {
         value: u64,
+    },
+    PureBool {
+        value: bool,
     },
 }
 
@@ -69,6 +78,8 @@ pub enum TransactionArg {
 pub enum VerificationStatus {
     Valid,
     NotFound,
+    RevokedOnChain,
+    Expired,
     Revoked,
     UnknownIssuer,
     UnknownDomain,
@@ -93,6 +104,8 @@ pub struct VerificationVerdict {
     pub policy_version: String,
     pub checked_at: String,
     pub evidence: Option<Value>,
+    pub credential_metadata: Option<Value>,
+    pub on_chain_transferable: Option<bool>,
     pub latency_ms: u64,
     pub cache_hit: bool,
     pub compat_notice: Option<String>,

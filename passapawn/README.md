@@ -1,135 +1,83 @@
-# Passapawn MVP (Frontend + Notarization Service)
+# Passapawn 🎓🐾
+> Tamper-proof credentials for the real world, powered by IOTA.
 
-Passapawn is a permissionless IOTA credential prototype with trust-policy verification.
+![IOTA devnet](https://img.shields.io/badge/IOTA-devnet-blue)
+![Rust](https://img.shields.io/badge/backend-Rust-orange)
+![React](https://img.shields.io/badge/frontend-React-61dafb)
+![Move](https://img.shields.io/badge/contracts-Move-6f42c1)
 
-## 1) Local setup
+## The Problem
+Schools and clinics still rely on paper documents and centralized databases for credentials, certificates, and records. These systems are slow to verify, easy to dispute, and hard to share across institutions.
 
-### Frontend
+Centralized credential stores also create data silos and privacy risk. GDPR-aligned handling becomes harder when sensitive personal or medical data is duplicated across multiple databases.
 
-```bash
-cd passapawn
-npm install
-cp .env.example .env
-npm run dev
+## The Solution
+Passapawn enables institutions to issue tamper-proof credential references on IOTA while keeping raw personal data off-chain. Credentials are notarized with hash-first payloads and verified through domain-scoped trust policy.
+
+Flow: institution issues on IOTA → holder sees credential in wallet → anyone verifies through a shareable link. No central authority controls issuance; trust is policy-gated by domains, issuers, and templates.
+
+## Architecture
+```mermaid
+flowchart LR
+  A[Browser\nReact + IOTA dApp Kit] -- Wallet TX --> B[IOTA Devnet\nMove Package]
+  A -- REST API --> C[Rust/Axum Backend]
+  C -- RPC --> B
+  C -- Read/Write --> D[Trust Policy JSON + Governance JSON + Onboarding JSON]
 ```
 
-Frontend env vars (`passapawn/.env`):
+## Quick Start
+Prerequisites:
+- Node.js 20+
+- Rust stable
+- IOTA wallet browser extension
 
-- `VITE_NOTARIZATION_API_URL`: backend URL used for transaction intents and verification.
-- `VITE_IOTA_DEFAULT_NETWORK`: `devnet | testnet | mainnet`.
-- `VITE_IOTA_*_RPC_URL`: optional RPC override per network.
-- `VITE_IOTA_*_PACKAGE_ID`: package ID per network.
+1. Install dependencies:
+   - Frontend: `npm install`
+   - Backend: `cd src/notarization-service && cargo build`
+2. Copy env templates:
+   - `cp .env.example .env`
+   - `cp src/notarization-service/.env.example src/notarization-service/.env`
+3. Start backend:
+   - `cd src/notarization-service && cargo run`
+4. Start frontend:
+   - `npm run dev`
+5. Open `http://localhost:5173`, connect wallet, and follow the demo flow.
 
-### Backend
+Docker (backend only, frontend still runs with Vite):
+- `docker-compose up --build`
 
-```bash
-cd passapawn/src/notarization-service
-cp .env.example .env
-cargo run --release
-```
+## Demo Seed Utility
+Generate deterministic demo IDs and env suggestions:
+- `npm run seed:demo`
 
-Backend env vars (`passapawn/src/notarization-service/.env`):
+This utility is hackathon-oriented and includes a TODO adapter for real transaction signing.
 
-- `IOTA_NODE_URL`: JSON-RPC node endpoint.
-- `IOTA_PACKAGE_ID`: package used for generated intents.
-- `NOTARIZATION_BIND_ADDR`: API bind address, default `0.0.0.0:8080`.
-- `TRUST_POLICY_PATH`: persisted policy store file.
-- `NOTARIZATION_PROFILE`: `devnet | staging | mainnet`.
-- `STARTUP_CHECKS_ENABLED`: fail-fast checks for config + RPC reachability.
-- `MAX_PAYLOAD_BYTES`: request body guardrail for verify endpoint.
-- `VERIFY_RATE_LIMIT_PER_MINUTE`: per-IP verify throttle.
-- `NOTARIZATION_ADMIN_LOCAL_ONLY`: keep admin endpoints loopback-only.
-- `NOTARIZATION_ADMIN_API_KEY`: optional API key for admin endpoints.
-- `TRUST_ACCEPTED_DOMAINS`, `TRUST_ACCEPTED_ISSUERS`, `TRUST_ACCEPTED_TEMPLATE_VERSIONS`, `TRUST_BLOCKED_ISSUERS`: one-time boot defaults for policy seed.
+## Demo Flow (Judge Walkthrough)
+1. Open the app URL and read the landing page.
+2. Connect IOTA wallet.
+3. Create domain: `PassaPawn Demo School`.
+4. Submit + publish template: `B2 Language Certificate`.
+5. Issue a credential via locked or dynamic notarization.
+6. Verify in the Verify tab and inspect the trust verdict.
+7. Click **Copy verify link 🔗**, open in incognito, and see verdict with no wallet.
 
-Policy updates are persisted and hot-reloaded via admin APIs without service redeploy.
+> 🚀 **KILLER DEMO MOMENT:** verification works from a plain browser link in incognito without wallet setup.
 
-## 2) Verification policy behavior
+## Move Package
+- Package address: `0xbc6b8d122ab9b277e9ba4d1173bc62fdbdd07f2f4935f6f55327f983833b9afb`
+- Network: IOTA devnet
+- Modules: `credential_domain`, `templates`, `asset_record`, `field_schema`
 
-`POST /notarizations/:id/verify` returns:
+## Public APIs Added in Phase 4
+- `GET /api/v1/public/verify/:id` (no auth)
+- `GET /api/v1/holder/:address/credentials` (no auth)
 
-- `verified: boolean`
-- `status: valid | not_found | revoked | unknown_issuer | unknown_domain | invalid_template | stale_template | policy_error | disputed`
-- `summary: string`
-- `reasons: string[]`
-- `id: string`
-- `issuer`, `domain`, `template`, `revocation`, `dispute` metadata objects (optional)
-- `policy_version`, `checked_at`, `request_id`
+## Known Limitations
+- `scripts/seed_demo.ts` uses a TODO adapter for real signed governance transactions.
+- Holder credential extraction depends on current devnet `iota_getOwnedObjects` response shape.
+- Share links verify by object ID (and optional payload), not selective disclosure.
 
-Policy evaluation keeps on-chain existence as the first check and then applies deterministic trust rules.
-
-## 3) Admin policy/revocation/dispute APIs
-
-All `/admin/*` endpoints require:
-
-- `x-admin-nonce` header (single-use replay protection)
-- loopback origin when `NOTARIZATION_ADMIN_LOCAL_ONLY=true`
-- optional `x-api-key` if `NOTARIZATION_ADMIN_API_KEY` is configured
-
-Endpoints:
-
-- `GET /admin/policy`
-- `POST /admin/policy`
-- `POST /admin/revocations`
-- `POST /admin/disputes/open`
-- `POST /admin/disputes/:id/resolve`
-
-## 4) API versioning (phase 3)
-
-Stable partner endpoints are now available under `/api/v1/*` and `/api/v2/*`.
-
-Required v2 governance endpoints:
-
-- `GET /api/v2/policy/active`
-- `POST /api/v2/policy/draft`
-- `POST /api/v2/policy/activate`
-- `POST /api/v2/policy/rollback`
-
-Required v2 onboarding endpoints:
-
-- `POST /api/v2/onboarding/request`
-- `POST /api/v2/onboarding/review`
-- `POST /api/v2/onboarding/activate`
-- `GET /api/v2/onboarding/:id`
-
-Additional operations endpoints:
-
-- `GET /api/v2/metrics`
-- `GET /api/v2/compliance/report`
-- `POST /api/v2/launch/mode`
-- `POST /api/v2/launch/rollback`
-
-Mutation endpoints require `x-idempotency-key` and role-based headers (`x-role`, `x-api-key`, `x-admin-nonce`).
-
-## 5) Verify response (phase 3 extension)
-
-`POST /api/v2/notarizations/:id/verify` returns all phase-2 fields plus:
-
-- `evidence: object | null`
-- `latency_ms: number`
-- `cache_hit: boolean`
-- `compat_notice: string | null`
-
-## 6) Privacy defaults (GDPR-safe MVP)
-
-- Frontend notarization intents default to `payload_strategy = hash`.
-- Backend does not persist credential payloads and does not log request bodies.
-- Keep raw personal/medical data off-chain; only hashes/references/governance metadata should be notarized.
-
-## 7) Quick verification flow
-
-1. Start backend and frontend with configured `.env` files.
-2. Connect wallet and issue a locked or dynamic notarization from the UI.
-3. Copy object ID and run verify in UI.
-4. Update trust policy via admin endpoints or policy file.
-5. Verify again to observe explainable policy verdict changes.
-
-## 8) Launch controls
-
-Launch mode is runtime-configurable: `dry_run | canary | full`.
-
-- `dry_run`: operational checks and policy governance active, rollout blocked by policy.
-- `canary`: partial rollout mode with fast rollback path.
-- `full`: production rollout mode after readiness gates pass.
-
-Use `POST /api/v2/launch/rollback` for emergency rollback with optional policy freeze.
+## v5 Backlog
+- Selective disclosure with ZK proofs for verifier-minimized data sharing.
+- Multi-chain verification adapters with policy parity.
+- Mobile wallet-first holder UX and push notifications.

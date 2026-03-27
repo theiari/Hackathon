@@ -1,0 +1,15 @@
+{
+  "version": "policy-v1",
+  "updated_at": "2026-03-25T18:27:16.298526300+00:00",
+  "change_author": null,
+  "change_note": null,
+  "change_signature": null,
+  "trusted_domains": [],
+  "trusted_issuers": [],
+  "trusted_templates": [],
+  "trusted_template_versions": [],
+  "blocked_issuers": [],
+  "revoked_credentials": {},
+  "disputes": {},
+  "dispute_default_disposition": "warning"
+}

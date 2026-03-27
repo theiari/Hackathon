@@ -237,16 +237,22 @@ fn write_to_disk(path: &PathBuf, value: &PolicyGovernanceData) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn test_path(file: &str) -> String {
         let mut path = std::env::temp_dir();
-        path.push(file);
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|value| value.as_nanos())
+            .unwrap_or_default();
+        path.push(format!("{}-{}", unique, file));
         path.to_string_lossy().to_string()
     }
 
     #[test]
     fn governance_supports_draft_activate_and_rollback() {
         let path = test_path("policy-governance-test.json");
+        let _ = std::fs::remove_file(&path);
         let base = TrustPolicyData::default();
         let registry = PolicyGovernanceRegistry::new(&path, &base);
 

@@ -35,7 +35,7 @@ impl NotarizationConfig {
                 .unwrap_or_else(|_| "https://api.devnet.iota.cafe".to_string()),
             package_id: std::env::var("IOTA_PACKAGE_ID")
                 .unwrap_or_else(|_| {
-                    "0xbc6b8d122ab9b277e9ba4d1173bc62fdbdd07f2f4935f6f55327f983833b9afb".to_string()
+                    "0x788410411974bcec8a75ccfc959038478e8c42d6c54e6977b20b8d5a1d8f7c36".to_string()
                 }),
             bind_addr: std::env::var("NOTARIZATION_BIND_ADDR")
                 .unwrap_or_else(|_| "0.0.0.0:8080".to_string()),

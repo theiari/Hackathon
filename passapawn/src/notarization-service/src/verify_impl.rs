@@ -28,6 +28,8 @@ pub struct VerifyResponse {
     pub checked_at: String,
     pub request_id: String,
     pub evidence: Option<serde_json::Value>,
+    pub credential_metadata: Option<serde_json::Value>,
+    pub on_chain_transferable: Option<bool>,
     pub latency_ms: u64,
     pub cache_hit: bool,
     pub compat_notice: Option<String>,
@@ -40,7 +42,28 @@ pub async fn verify_notarization(
     Path(id): Path<String>,
     Json(req): Json<VerifyRequest>,
 ) -> Result<Json<VerifyResponse>, ApiError> {
-    if req.data.len() > state.service.config.max_payload_bytes {
+    verify_with_payload(state, addr, headers, id, Some(req.data)).await
+}
+
+pub async fn verify_notarization_public(
+    State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<VerifyResponse>, ApiError> {
+    verify_with_payload(state, addr, headers, id, None).await
+}
+
+async fn verify_with_payload(
+    state: AppState,
+    addr: SocketAddr,
+    headers: HeaderMap,
+    id: String,
+    data: Option<String>,
+) -> Result<Json<VerifyResponse>, ApiError> {
+    let payload = data.unwrap_or_default();
+
+    if payload.len() > state.service.config.max_payload_bytes {
         return Err(ApiError::BadRequest(format!(
             "payload exceeds MAX_PAYLOAD_BYTES={} bytes",
             state.service.config.max_payload_bytes
@@ -69,9 +92,15 @@ pub async fn verify_notarization(
         .and_then(|raw| raw.to_str().ok())
         .map(str::to_string);
 
+    let payload_bytes = if payload.trim().is_empty() {
+        &[][..]
+    } else {
+        payload.as_bytes()
+    };
+
     let verdict = state
         .service
-        .verify_notarization(&id, req.data.as_bytes())
+        .verify_notarization(&id, payload_bytes)
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?;
 
@@ -105,6 +134,8 @@ pub async fn verify_notarization(
         checked_at: verdict.checked_at,
         request_id,
         evidence: verdict.evidence,
+        credential_metadata: verdict.credential_metadata,
+        on_chain_transferable: verdict.on_chain_transferable,
         latency_ms: verdict.latency_ms,
         cache_hit: verdict.cache_hit,
         compat_notice: verdict.compat_notice,

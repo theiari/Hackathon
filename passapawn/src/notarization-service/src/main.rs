@@ -11,6 +11,10 @@ mod policy_governance;
 mod onboarding_registry;
 mod secrets;
 
+// PACKAGE REDEPLOYMENT REQUIRED after v5b Move changes.
+// Run: cd move/counter && iota client publish --gas-budget 100000000
+// Then update {NEW_PACKAGE_ID} in .env.example, constants.ts, backend .env
+
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::{Arc, Mutex};
@@ -19,21 +23,25 @@ use axum::{
     http::HeaderMap,
     routing::{get, post},
     Router,
-    extract::{ConnectInfo, Path, State},
+    extract::{ConnectInfo, Path, Query, State},
     Json,
 };
+use base64::Engine;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use chrono::Utc;
 use sha2::{Digest, Sha256};
+use serde::Serialize;
 use tokio::time::sleep;
 
 use crate::client::NotarizationService;
 use crate::config::NotarizationConfig;
 use crate::dto::{
-    EmergencyRollbackRequest, LaunchModeRequest, OnboardingActivateRequest, OnboardingRequestCreate,
-    OnboardingReviewRequest, OpenDisputeRequest, PolicyActivateRequest, PolicyDraftRequest,
-    PolicyRollbackRequest, ResolveDisputeRequest, RevokeCredentialRequest,
+    CreateCredentialRecordIntentRequest, EmergencyRollbackRequest, LaunchModeRequest,
+    OnboardingActivateRequest, OnboardingRequestCreate, OnboardingReviewRequest,
+    OpenDisputeRequest, PolicyActivateRequest, PolicyDraftRequest, PolicyRollbackRequest,
+    PresentationToken, ResolveDisputeRequest, RevokeCredentialRequest, RevokeOnchainIntentRequest,
+    TransactionIntentResponse,
 };
 use crate::error::ApiError;
 use crate::dynamic_impl::{create_dynamic, transfer_dynamic, update_dynamic_metadata, update_dynamic_state};
@@ -42,7 +50,7 @@ use crate::onboarding_registry::OnboardingRegistry;
 use crate::policy_governance::PolicyGovernanceRegistry;
 use crate::secrets::{EnvAndFileSecretProvider, SecretProvider};
 use crate::trust_registry::{DisputeRecord, TrustPolicyData, RevocationRecord};
-use crate::verify_impl::verify_notarization;
+use crate::verify_impl::{verify_notarization, verify_notarization_public};
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -196,6 +204,7 @@ impl AppState {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let _ = dotenvy::dotenv();
     let cfg = NotarizationConfig::from_env();
     let bind_addr = cfg.bind_addr.clone();
 
@@ -260,8 +269,15 @@ async fn main() -> anyhow::Result<()> {
         .route("/admin/disputes/open", post(open_dispute))
         .route("/admin/disputes/:id/resolve", post(resolve_dispute))
         .route("/api/v1/notarizations/:id/verify", post(verify_notarization))
+        .route("/api/v1/public/verify/:id", get(verify_notarization_public))
+        .route("/api/v1/public/present", get(public_present))
+        .route("/api/v1/holder/:address/credentials", get(holder_credentials_v1))
+        .route("/api/v1/templates/:template_id/fields", get(get_template_fields_v1))
         .route("/api/v1/notarizations/locked", post(create_locked))
         .route("/api/v1/notarizations/dynamic", post(create_dynamic))
+        .route("/api/v2/credential-record/intent", post(credential_record_intent_v2))
+        .route("/api/v2/credentials/:id/revoke-onchain", post(revoke_onchain_v2))
+        .route("/api/v2/issuer/:domain_id/credentials", get(issuer_credentials_v2))
         .route("/api/v2/policy/active", get(get_active_policy_v2))
         .route("/api/v2/policy/draft", post(create_policy_draft_v2))
         .route("/api/v2/policy/activate", post(activate_policy_draft_v2))
@@ -301,6 +317,8 @@ async fn main() -> anyhow::Result<()> {
     // 4. Start HTTP server
     let listener = TcpListener::bind(&bind_addr).await?;
     println!("Listening on {}", listener.local_addr()?);
+    println!("Public verify endpoint: /api/v1/public/verify/:id (no auth required)");
+    println!("Holder credentials endpoint: /api/v1/holder/:address/credentials");
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await?;
 
     Ok(())
@@ -308,6 +326,702 @@ async fn main() -> anyhow::Result<()> {
 
 async fn health_check() -> &'static str {
     "ok"
+}
+
+#[derive(Debug, Serialize)]
+struct HolderCredentialItem {
+    id: String,
+    object_type: String,
+    domain_id: Option<String>,
+    asset_meta_preview: String,
+    verdict: serde_json::Value,
+    fetched_at: String,
+}
+
+#[derive(Debug, Serialize)]
+struct HolderCredentialsResponse {
+    address: String,
+    credentials: Vec<HolderCredentialItem>,
+    count: usize,
+    truncated: bool,
+    fetched_at: String,
+}
+
+#[derive(Debug, Clone)]
+struct OwnedCredential {
+    id: String,
+    object_type: String,
+    domain_id: Option<String>,
+    asset_meta_preview: String,
+}
+
+#[derive(Debug, Serialize)]
+struct TemplateField {
+    name: String,
+    field_type: u8,
+    required: bool,
+    description: String,
+}
+
+#[derive(Debug, Serialize)]
+struct TemplateFieldsResponse {
+    template_id: String,
+    credential_type: String,
+    fields: Vec<TemplateField>,
+}
+
+#[derive(Debug, Serialize)]
+struct IssuerCredentialItem {
+    record_id: String,
+    notarization_id: String,
+    verdict: serde_json::Value,
+    fetched_at: String,
+}
+
+#[derive(Debug, Serialize)]
+struct IssuerCredentialsResponse {
+    domain_id: String,
+    credentials: Vec<IssuerCredentialItem>,
+    total: usize,
+    truncated: bool,
+    fetched_at: String,
+}
+
+async fn holder_credentials_v1(
+    State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(address): Path<String>,
+) -> Result<Json<HolderCredentialsResponse>, ApiError> {
+    let rate_key = addr.ip().to_string();
+    if !state.check_verify_rate_limit(&rate_key, state.service.config.verify_rate_limit_per_minute) {
+        return Err(ApiError::RateLimited("verify_rate_limit_exceeded".to_string()));
+    }
+
+    let fetched_at = Utc::now().to_rfc3339();
+    let mut owned = fetch_owned_credentials(
+        &state.service.node_url,
+        address.trim(),
+        &state.service.package_id,
+    )
+    .await
+    .map_err(|err| ApiError::Internal(format!("failed to fetch owned credentials: {err}")))?;
+
+    let truncated = owned.len() > 50;
+    if truncated {
+        owned.truncate(50);
+    }
+
+    let mut credentials = Vec::with_capacity(owned.len());
+    for item in owned {
+        let verdict = state
+            .service
+            .verify_notarization(&item.id, b"")
+            .await
+            .map_err(|err| ApiError::Internal(format!("verify failed for {}: {}", item.id, err)))?;
+
+        credentials.push(HolderCredentialItem {
+            id: item.id,
+            object_type: item.object_type,
+            domain_id: item.domain_id,
+            asset_meta_preview: item.asset_meta_preview,
+            verdict: serde_json::json!({
+                "id": verdict.id,
+                "verified": verdict.verified,
+                "status": verdict.status,
+                "summary": verdict.summary,
+                "reasons": verdict.reasons,
+                "issuer": verdict.issuer,
+                "domain": verdict.domain,
+                "template": verdict.template,
+                "revocation": verdict.revocation,
+                "dispute": verdict.dispute,
+                "policy_version": verdict.policy_version,
+                "checked_at": verdict.checked_at,
+                "request_id": format!("holder-{}", uuid::Uuid::new_v4()),
+                "evidence": verdict.evidence,
+                "credential_metadata": verdict.credential_metadata,
+                "on_chain_transferable": verdict.on_chain_transferable,
+                "latency_ms": verdict.latency_ms,
+                "cache_hit": verdict.cache_hit,
+                "compat_notice": verdict.compat_notice,
+            }),
+            fetched_at: Utc::now().to_rfc3339(),
+        });
+    }
+
+    Ok(Json(HolderCredentialsResponse {
+        address: address.trim().to_string(),
+        count: credentials.len(),
+        credentials,
+        truncated,
+        fetched_at,
+    }))
+}
+
+async fn get_template_fields_v1(
+    State(state): State<AppState>,
+    Path(template_id): Path<String>,
+) -> Result<Json<TemplateFieldsResponse>, ApiError> {
+    let payload = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "iota_getObject",
+        "params": [template_id, {"showContent": true}]
+    });
+
+    let response = reqwest::Client::new()
+        .post(&state.service.node_url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|err| ApiError::Internal(format!("template lookup failed: {err}")))?;
+
+    if !response.status().is_success() {
+        return Ok(Json(TemplateFieldsResponse {
+            template_id: String::new(),
+            credential_type: "B2 Language Certificate".to_string(),
+            fields: vec![TemplateField {
+                name: "student_name".to_string(),
+                field_type: 0,
+                required: true,
+                description: "Full name of the student".to_string(),
+            }],
+        }));
+    }
+
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|err| ApiError::Internal(format!("invalid template response: {err}")))?;
+    let content = body
+        .get("result")
+        .and_then(|result| result.get("data"))
+        .and_then(|data| data.get("content"))
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+
+    let credential_type = extract_field_value(&content, &["credential_type", "credentialType"]) 
+        .unwrap_or_else(|| "Credential".to_string());
+
+    let mut fields = Vec::new();
+    if let Some(values) = find_nested_array(&content, &["fields", "field_descriptors"]) {
+        for item in values {
+            let name = extract_field_value(item, &["name"]).unwrap_or_default();
+            if name.is_empty() {
+                continue;
+            }
+            let field_type = extract_field_value(item, &["field_type", "fieldType"])
+                .and_then(|raw| raw.parse::<u8>().ok())
+                .unwrap_or(0);
+            let required = extract_field_value(item, &["required"]).is_none_or(|raw| raw == "true" || raw == "1");
+            let description = extract_field_value(item, &["description"]).unwrap_or_default();
+            fields.push(TemplateField {
+                name,
+                field_type,
+                required,
+                description,
+            });
+        }
+    }
+
+    if fields.is_empty() {
+        fields.push(TemplateField {
+            name: "student_name".to_string(),
+            field_type: 0,
+            required: true,
+            description: "Full name of the student".to_string(),
+        });
+    }
+
+    Ok(Json(TemplateFieldsResponse {
+        template_id,
+        credential_type,
+        fields,
+    }))
+}
+
+async fn issuer_credentials_v2(
+    State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Path(domain_id): Path<String>,
+) -> Result<Json<IssuerCredentialsResponse>, ApiError> {
+    authorize_role(&state, &headers, addr.ip(), "verifier", false)?;
+
+    // Issuer dashboard should reflect fresh revoke/expiry state immediately after tx confirmation.
+    state.service.invalidate_caches();
+
+    let query = serde_json::json!({
+        "MoveEventType": format!("{}::asset_record::AssetRecordCreated", state.service.package_id)
+    });
+    let mut method_used: Option<&str> = None;
+    let mut events: Vec<serde_json::Value> = Vec::new();
+    let mut last_method_not_found: Option<String> = None;
+
+    for method in ["iotax_queryEvents", "iota_queryEvents", "suix_queryEvents"] {
+        let payload = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": method,
+            "params": [query, null, 200, true]
+        });
+
+        let response = reqwest::Client::new()
+            .post(&state.service.node_url)
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|err| ApiError::Internal(format!("issuer events query failed: {err}")))?;
+
+        if !response.status().is_success() {
+            continue;
+        }
+
+        let body: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|err| ApiError::Internal(format!("invalid issuer events response: {err}")))?;
+
+        if let Some(rpc_error) = body.get("error") {
+            let code = rpc_error
+                .get("code")
+                .and_then(|value| value.as_i64())
+                .unwrap_or_default();
+            if code == -32601 {
+                last_method_not_found = Some(format!("{method}: {rpc_error}"));
+                continue;
+            }
+            return Err(ApiError::Internal(format!(
+                "issuer events query RPC error via {method}: {rpc_error}"
+            )));
+        }
+
+        method_used = Some(method);
+        events = body
+            .get("result")
+            .and_then(|result| result.get("data"))
+            .and_then(|value| value.as_array())
+            .cloned()
+            .unwrap_or_default();
+        break;
+    }
+
+    if method_used.is_none() {
+        return Err(ApiError::Internal(format!(
+            "no supported event query RPC method available ({})",
+            last_method_not_found.unwrap_or_else(|| "no details".to_string())
+        )));
+    }
+
+    let mut rows: Vec<(String, String)> = Vec::new();
+    for event in &events {
+            let parsed = event.get("parsedJson").unwrap_or(event);
+            let event_domain = extract_field_value(parsed, &["domain_id", "domainId"]).unwrap_or_default();
+            if event_domain != domain_id {
+                continue;
+            }
+            let record_id = extract_field_value(parsed, &["record_id", "recordId"]).unwrap_or_default();
+            let notarization_id = extract_field_value(parsed, &["notarization_id", "notarizationId"]).unwrap_or_else(|| record_id.clone());
+            if !record_id.is_empty() {
+                rows.push((record_id, notarization_id));
+            }
+    }
+
+    let truncated = rows.len() > 100;
+    if truncated {
+        rows.truncate(100);
+    }
+
+    let mut credentials = Vec::with_capacity(rows.len());
+    for (record_id, notarization_id) in rows {
+        let verdict = state
+            .service
+            .verify_notarization(&record_id, b"")
+            .await
+            .map_err(|err| ApiError::Internal(format!("verify failed for {}: {}", record_id, err)))?;
+        credentials.push(IssuerCredentialItem {
+            record_id,
+            notarization_id,
+            verdict: serialize_verdict(verdict, &format!("issuer-{}", uuid::Uuid::new_v4())),
+            fetched_at: Utc::now().to_rfc3339(),
+        });
+    }
+
+    Ok(Json(IssuerCredentialsResponse {
+        domain_id,
+        total: credentials.len(),
+        credentials,
+        truncated,
+        fetched_at: Utc::now().to_rfc3339(),
+    }))
+}
+
+async fn fetch_owned_credentials(
+    node_url: &str,
+    address: &str,
+    package_id: &str,
+) -> anyhow::Result<Vec<OwnedCredential>> {
+    let wanted_asset_type = format!("{}::asset_record::AssetRecord", package_id);
+    let query = serde_json::json!({
+        "options": {
+            "showType": true,
+            "showContent": true
+        }
+    });
+    let mut entries: Vec<serde_json::Value> = Vec::new();
+    let mut method_used: Option<&str> = None;
+    let mut last_method_not_found: Option<String> = None;
+
+    // TODO(iota-rpc-adapter): node versions differ on method names (iotax/iota/suix);
+    // keep this fallback adapter to preserve API contracts.
+    for method in ["iotax_getOwnedObjects", "iota_getOwnedObjects", "suix_getOwnedObjects"] {
+        let payload = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": method,
+            "params": [address, query, null, 50]
+        });
+
+        let response = reqwest::Client::new().post(node_url).json(&payload).send().await?;
+        if !response.status().is_success() {
+            continue;
+        }
+
+        let body: serde_json::Value = response.json().await?;
+        if let Some(rpc_error) = body.get("error") {
+            let code = rpc_error
+                .get("code")
+                .and_then(|value| value.as_i64())
+                .unwrap_or_default();
+            if code == -32601 {
+                last_method_not_found = Some(format!("{method}: {rpc_error}"));
+                continue;
+            }
+            anyhow::bail!("owned objects RPC error via {method}: {rpc_error}");
+        }
+
+        entries = body
+            .get("result")
+            .and_then(|result| result.get("data").or_else(|| result.get("objects")))
+            .and_then(|value| value.as_array())
+            .cloned()
+            .unwrap_or_default();
+        method_used = Some(method);
+        break;
+    }
+
+    if method_used.is_none() {
+        anyhow::bail!(
+            "no supported owned-objects RPC method available ({})",
+            last_method_not_found.unwrap_or_else(|| "no details".to_string())
+        );
+    }
+
+    let mut out = Vec::new();
+    for entry in entries {
+        let candidate = entry.get("data").unwrap_or(&entry);
+        let object_id = candidate
+            .get("objectId")
+            .or_else(|| candidate.get("object_id"))
+            .and_then(|value| value.as_str())
+            .unwrap_or_default()
+            .to_string();
+        if object_id.is_empty() {
+            continue;
+        }
+
+        let object_type = candidate
+            .get("type")
+            .or_else(|| candidate.get("objectType"))
+            .and_then(|value| value.as_str())
+            .unwrap_or_default()
+            .to_string();
+
+        let include = object_type.contains(&wanted_asset_type)
+            || object_type.contains("AssetRecord")
+            || object_type.contains("iota_notarization::notarization::Notarization")
+            || object_type.contains("::notarization::Notarization");
+        if !include {
+            continue;
+        }
+
+        let content = candidate.get("content").cloned().unwrap_or(serde_json::Value::Null);
+        let domain_id = extract_field_value(&content, &["domain_id", "domainId", "domain"]);
+        let meta_raw = extract_field_value(&content, &["asset_meta", "assetMeta", "state_metadata", "metadata"]) 
+            .unwrap_or_default();
+
+        out.push(OwnedCredential {
+            id: object_id,
+            object_type: if object_type.contains("AssetRecord") {
+                "AssetRecord".to_string()
+            } else {
+                "Notarization".to_string()
+            },
+            domain_id,
+            asset_meta_preview: sanitize_preview(&meta_raw),
+        });
+    }
+
+    Ok(out)
+}
+
+fn extract_field_value(content: &serde_json::Value, keys: &[&str]) -> Option<String> {
+    match content {
+        serde_json::Value::Object(map) => {
+            for key in keys {
+                if let Some(found) = map.get(*key) {
+                    if let Some(as_str) = found.as_str() {
+                        return Some(as_str.to_string());
+                    }
+                    if let Some(as_obj) = found.as_object() {
+                        if let Some(value) = as_obj.get("value").and_then(|v| v.as_str()) {
+                            return Some(value.to_string());
+                        }
+                    }
+                    return Some(found.to_string());
+                }
+            }
+            map.values().find_map(|value| extract_field_value(value, keys))
+        }
+        serde_json::Value::Array(values) => values.iter().find_map(|value| extract_field_value(value, keys)),
+        _ => None,
+    }
+}
+
+fn sanitize_preview(raw: &str) -> String {
+    let mut preview = raw.chars().take(64).collect::<String>();
+    if preview.is_empty() {
+        return "".to_string();
+    }
+
+    let has_email = preview.contains('@');
+    let digits = preview.chars().filter(|ch| ch.is_ascii_digit()).count();
+    if has_email || digits >= 6 {
+        return "[redacted]".to_string();
+    }
+
+    preview = preview.replace('\n', " ").replace('\r', " ");
+    preview
+}
+
+fn find_nested_array<'a>(value: &'a serde_json::Value, keys: &[&str]) -> Option<&'a Vec<serde_json::Value>> {
+    match value {
+        serde_json::Value::Object(map) => {
+            for key in keys {
+                if let Some(found) = map.get(*key).and_then(|v| v.as_array()) {
+                    return Some(found);
+                }
+            }
+            map.values().find_map(|child| find_nested_array(child, keys))
+        }
+        serde_json::Value::Array(values) => values.iter().find_map(|child| find_nested_array(child, keys)),
+        _ => None,
+    }
+}
+
+fn serialize_verdict(verdict: crate::model::VerificationVerdict, request_id: &str) -> serde_json::Value {
+    serde_json::json!({
+        "id": verdict.id,
+        "verified": verdict.verified,
+        "status": verdict.status,
+        "summary": verdict.summary,
+        "reasons": verdict.reasons,
+        "issuer": verdict.issuer,
+        "domain": verdict.domain,
+        "template": verdict.template,
+        "revocation": verdict.revocation,
+        "dispute": verdict.dispute,
+        "policy_version": verdict.policy_version,
+        "checked_at": verdict.checked_at,
+        "request_id": request_id,
+        "evidence": verdict.evidence,
+        "credential_metadata": verdict.credential_metadata,
+        "on_chain_transferable": verdict.on_chain_transferable,
+        "latency_ms": verdict.latency_ms,
+        "cache_hit": verdict.cache_hit,
+        "compat_notice": verdict.compat_notice,
+    })
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct PresentQuery {
+    token: String,
+}
+
+async fn public_present(
+    State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Query(query): Query<PresentQuery>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let rate_key = format!("present:{}", addr.ip());
+    if !state.check_verify_rate_limit(&rate_key, state.service.config.verify_rate_limit_per_minute) {
+        return Err(ApiError::RateLimited("verify_rate_limit_exceeded".to_string()));
+    }
+
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(query.token.as_bytes())
+        .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(query.token.as_bytes()))
+        .map_err(|_| ApiError::BadRequest("invalid presentation token encoding".to_string()))?;
+    let payload: PresentationToken = serde_json::from_slice(&decoded)
+        .map_err(|_| ApiError::BadRequest("invalid presentation token payload".to_string()))?;
+
+    let expected_message = format!(
+        "Passapawn Credential Presentation\ncredential_id: {}\nholder: {}\ntimestamp: {}\nnonce: {}",
+        payload.credential_id, payload.holder, payload.timestamp, payload.nonce
+    );
+
+    let message_bytes = base64::engine::general_purpose::STANDARD
+        .decode(payload.message_bytes.as_bytes())
+        .map_err(|_| ApiError::BadRequest("invalid message_bytes in token".to_string()))?;
+
+    let mut signature_valid = false;
+    let mut failure_reason: Option<String>;
+    if message_bytes != expected_message.as_bytes() {
+        failure_reason = Some("message_mismatch".to_string());
+    } else {
+        // TODO(v5b): implement full IOTA personal message signature verification.
+        // The dapp-kit signature format includes scheme + signature + public key bytes.
+        // Use iota-sdk helper when available (or ed25519-dalek fallback) to verify.
+        let _ = &payload.signature;
+        signature_valid = false;
+        failure_reason = Some("signature_verification_not_implemented".to_string());
+    }
+
+    let holder_owner = fetch_object_owner_address(&state.service.node_url, &payload.credential_id)
+        .await
+        .map_err(|err| ApiError::Internal(format!("owner lookup failed: {err}")))?;
+    let holder_owns_credential = holder_owner
+        .as_deref()
+        .map(|owner| owner.eq_ignore_ascii_case(payload.holder.trim()))
+        .unwrap_or(false);
+
+    if !holder_owns_credential {
+        failure_reason = Some("holder_mismatch".to_string());
+    }
+
+    let verdict = state
+        .service
+        .verify_notarization(payload.credential_id.trim(), b"")
+        .await
+        .map_err(|err| ApiError::Internal(format!("verify failed for presentation: {err}")))?;
+
+    let presentation_valid = signature_valid && holder_owns_credential;
+    Ok(Json(serde_json::json!({
+        "credential_id": payload.credential_id,
+        "holder_address": payload.holder,
+        "presentation_valid": presentation_valid,
+        "presentation_verified_at": Utc::now().to_rfc3339(),
+        "signature_valid": signature_valid,
+        "holder_owns_credential": holder_owns_credential,
+        "nonce": payload.nonce,
+        "timestamp": payload.timestamp,
+        "reason": failure_reason,
+        "verdict": serialize_verdict(verdict, &format!("present-{}", uuid::Uuid::new_v4())),
+    })))
+}
+
+async fn credential_record_intent_v2(
+    State(state): State<AppState>,
+    Json(req): Json<CreateCredentialRecordIntentRequest>,
+) -> Result<Json<TransactionIntentResponse>, ApiError> {
+    if req.notarization_id.trim().is_empty() || req.domain_id.trim().is_empty() {
+        return Err(ApiError::BadRequest(
+            "notarization_id and domain_id are required".to_string(),
+        ));
+    }
+
+    let intent = crate::model::TransactionIntent {
+        package_id: state.service.package_id.clone(),
+        target_module: "asset_record".to_string(),
+        target_function: "create_credential_record".to_string(),
+        arguments: vec![
+            crate::model::TransactionArg::PureId {
+                value: req.notarization_id.trim().to_string(),
+            },
+            crate::model::TransactionArg::PureId {
+                value: req.domain_id.trim().to_string(),
+            },
+            crate::model::TransactionArg::PureBytes {
+                value: req.meta.into_bytes(),
+            },
+            crate::model::TransactionArg::PureU64 {
+                value: req.expiry_unix,
+            },
+            crate::model::TransactionArg::PureBool {
+                value: req.transferable,
+            },
+        ],
+    };
+
+    Ok(Json(intent.into()))
+}
+
+async fn revoke_onchain_v2(
+    State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(req): Json<RevokeOnchainIntentRequest>,
+) -> Result<Json<TransactionIntentResponse>, ApiError> {
+    authorize_role(&state, &headers, addr.ip(), "policy-admin", false)?;
+    if req.domain_cap_id.trim().is_empty() || id.trim().is_empty() {
+        return Err(ApiError::BadRequest(
+            "domain_cap_id and credential id are required".to_string(),
+        ));
+    }
+
+    let intent = crate::model::TransactionIntent {
+        package_id: state.service.package_id.clone(),
+        target_module: "asset_record".to_string(),
+        target_function: "revoke_credential_record".to_string(),
+        arguments: vec![
+            crate::model::TransactionArg::Object {
+                object_id: req.domain_cap_id.trim().to_string(),
+            },
+            crate::model::TransactionArg::Object {
+                object_id: id.trim().to_string(),
+            },
+        ],
+    };
+
+    Ok(Json(intent.into()))
+}
+
+async fn fetch_object_owner_address(node_url: &str, object_id: &str) -> anyhow::Result<Option<String>> {
+    let payload = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "iota_getObject",
+        "params": [object_id, {"showOwner": true}]
+    });
+
+    let response = reqwest::Client::new()
+        .post(node_url)
+        .json(&payload)
+        .send()
+        .await?;
+    if !response.status().is_success() {
+        return Ok(None);
+    }
+
+    let body: serde_json::Value = response.json().await?;
+    let owner = body
+        .get("result")
+        .and_then(|result| result.get("data"))
+        .and_then(|data| data.get("owner"))
+        .and_then(|owner| {
+            owner
+                .get("AddressOwner")
+                .and_then(|value| value.as_str())
+                .map(str::to_string)
+                .or_else(|| {
+                    owner
+                        .get("address_owner")
+                        .and_then(|value| value.as_str())
+                        .map(str::to_string)
+                })
+        });
+    Ok(owner)
 }
 
 async fn get_trust_policy(

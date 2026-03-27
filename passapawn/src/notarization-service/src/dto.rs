@@ -47,6 +47,30 @@ pub struct VerifyRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct CreateCredentialRecordIntentRequest {
+    pub notarization_id: String,
+    pub domain_id: String,
+    pub meta: String,
+    pub expiry_unix: u64,
+    pub transferable: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RevokeOnchainIntentRequest {
+    pub domain_cap_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PresentationToken {
+    pub credential_id: String,
+    pub holder: String,
+    pub timestamp: String,
+    pub nonce: String,
+    pub signature: String,
+    pub message_bytes: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct RevokeCredentialRequest {
     pub target_id: String,
     pub reason_code: String,

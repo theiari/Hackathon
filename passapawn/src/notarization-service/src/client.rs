@@ -4,8 +4,10 @@ use crate::model::{
     VerificationStatus, VerificationVerdict,
 };
 use crate::trust_registry::{DisputeDisposition, TrustRegistry, TrustPolicyData};
+use chrono::DateTime;
 use serde_json::json;
 use chrono::Utc;
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -47,6 +49,51 @@ fn state_bytes_from_payload(data: &[u8], strategy: PayloadStrategy) -> Vec<u8> {
     }
 }
 
+fn parse_issuance_metadata(state_metadata: &str) -> anyhow::Result<(String, u64)> {
+    let parsed: serde_json::Value = serde_json::from_str(state_metadata)
+        .map_err(|err| anyhow::anyhow!("state_metadata must be valid JSON: {err}"))?;
+
+    let domain_id = parsed
+        .get("issuer_domain_id")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("state_metadata.issuer_domain_id is required"))?
+        .to_string();
+
+    if !domain_id.starts_with("0x") {
+        anyhow::bail!("state_metadata.issuer_domain_id must be an object ID starting with 0x");
+    }
+
+    let expiry_unix = match parsed.get("expiry_iso") {
+        None | Some(serde_json::Value::Null) => 0,
+        Some(serde_json::Value::String(value)) if value.trim().is_empty() => 0,
+        Some(serde_json::Value::String(value)) => {
+            let timestamp = chrono::DateTime::parse_from_rfc3339(value)
+                .map_err(|err| anyhow::anyhow!("state_metadata.expiry_iso must be RFC3339: {err}"))?
+                .timestamp();
+            if timestamp < 0 {
+                0
+            } else {
+                timestamp as u64
+            }
+        }
+        Some(other) => {
+            anyhow::bail!("state_metadata.expiry_iso must be a string or null, got {other}")
+        }
+    };
+
+    Ok((domain_id, expiry_unix))
+}
+
+fn derive_pseudo_notarization_id(state_bytes: &[u8], state_metadata: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(state_bytes);
+    hasher.update(state_metadata.as_bytes());
+    let digest = hasher.finalize();
+    format!("0x{}", hex_encode(&digest))
+}
+
 impl NotarizationService {
     pub async fn new(cfg: NotarizationConfig) -> anyhow::Result<Self> {
         if cfg.startup_checks_enabled {
@@ -81,25 +128,29 @@ impl NotarizationService {
         data: &[u8],
         payload_strategy: PayloadStrategy,
         _options: LockedOptions,
-        immutable_description: String,
+        _immutable_description: String,
         state_metadata: String,
     ) -> anyhow::Result<TransactionIntent> {
         let state_bytes = state_bytes_from_payload(data, payload_strategy);
+        let (domain_id, expiry_unix) = parse_issuance_metadata(&state_metadata)?;
+        let notarization_id = derive_pseudo_notarization_id(&state_bytes, &state_metadata);
 
         Ok(TransactionIntent {
             package_id: self.package_id.clone(),
-            target_module: "locked".to_string(),
-            target_function: "issue_locked".to_string(),
+            target_module: "asset_record".to_string(),
+            target_function: "create_credential_record".to_string(),
             arguments: vec![
-                TransactionArg::PureString {
-                    value: hex_encode(&state_bytes),
+                TransactionArg::PureId {
+                    value: notarization_id,
                 },
-                TransactionArg::PureString {
-                    value: immutable_description,
+                TransactionArg::PureId {
+                    value: domain_id,
                 },
-                TransactionArg::PureString {
-                    value: state_metadata,
+                TransactionArg::PureBytes {
+                    value: state_metadata.into_bytes(),
                 },
+                TransactionArg::PureU64 { value: expiry_unix },
+                TransactionArg::PureBool { value: false },
             ],
         })
     }
@@ -109,25 +160,29 @@ impl NotarizationService {
         data: &[u8],
         payload_strategy: PayloadStrategy,
         _options: DynamicOptions,
-        immutable_description: String,
+        _immutable_description: String,
         state_metadata: String,
     ) -> anyhow::Result<TransactionIntent> {
         let state_bytes = state_bytes_from_payload(data, payload_strategy);
+        let (domain_id, expiry_unix) = parse_issuance_metadata(&state_metadata)?;
+        let notarization_id = derive_pseudo_notarization_id(&state_bytes, &state_metadata);
 
         Ok(TransactionIntent {
             package_id: self.package_id.clone(),
-            target_module: "dynamic".to_string(),
-            target_function: "issue_dynamic".to_string(),
+            target_module: "asset_record".to_string(),
+            target_function: "create_credential_record".to_string(),
             arguments: vec![
-                TransactionArg::PureString {
-                    value: hex_encode(&state_bytes),
+                TransactionArg::PureId {
+                    value: notarization_id,
                 },
-                TransactionArg::PureString {
-                    value: immutable_description,
+                TransactionArg::PureId {
+                    value: domain_id,
                 },
-                TransactionArg::PureString {
-                    value: state_metadata,
+                TransactionArg::PureBytes {
+                    value: state_metadata.into_bytes(),
                 },
+                TransactionArg::PureU64 { value: expiry_unix },
+                TransactionArg::PureBool { value: true },
             ],
         })
     }
@@ -268,6 +323,9 @@ impl NotarizationService {
                 policy_version: policy.version,
                 checked_at: check_time,
                 evidence: Some(json!({"source": "rpc", "error": response.status().to_string()})),
+                credential_metadata: None,
+                on_chain_transferable: None,
+
                 latency_ms: started_at.elapsed().as_millis() as u64,
                 cache_hit: false,
                 compat_notice: Some("field 'verified' remains for v1 compatibility and is deprecated for future v3 clients".to_string()),
@@ -294,6 +352,9 @@ impl NotarizationService {
                 policy_version: policy.version,
                 checked_at: check_time,
                 evidence: Some(json!({"source": "rpc", "result": "not_found"})),
+                credential_metadata: None,
+                on_chain_transferable: None,
+
                 latency_ms: started_at.elapsed().as_millis() as u64,
                 cache_hit: false,
                 compat_notice: Some("field 'verified' remains for v1 compatibility and is deprecated for future v3 clients".to_string()),
@@ -333,6 +394,75 @@ impl NotarizationService {
                 },
             );
 
+        let (revoked_on_chain, expiry_unix, on_chain_transferable) = extract_on_chain_status(content.as_ref());
+
+        if revoked_on_chain {
+            return Ok(VerificationVerdict {
+                id: notarization_id.to_string(),
+                verified: false,
+                status: VerificationStatus::RevokedOnChain,
+                summary: "Credential has been revoked on-chain by the domain authority.".to_string(),
+                reasons: vec!["on_chain_revocation".to_string()],
+                issuer: None,
+                domain: None,
+                template: None,
+                revocation: Some(json!({"on_chain": true})),
+                dispute: None,
+                policy_version: policy.version,
+                checked_at: Utc::now().to_rfc3339(),
+                evidence: Some(json!({"source": "onchain", "revoked": true})),
+                credential_metadata: on_chain_transferable
+                    .map(|value| json!({"schema_version": 1, "transferable": value})),
+                on_chain_transferable,
+                latency_ms: started_at.elapsed().as_millis() as u64,
+                cache_hit: false,
+                compat_notice: Some("field 'verified' remains for v1 compatibility and is deprecated for future v3 clients".to_string()),
+            });
+        }
+
+        let now_unix = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        if expiry_unix > 0 && now_unix > expiry_unix {
+            let expired_since = DateTime::from_timestamp(expiry_unix as i64, 0)
+                .map(|dt| dt.to_rfc3339())
+                .unwrap_or_else(|| expiry_unix.to_string());
+            return Ok(VerificationVerdict {
+                id: notarization_id.to_string(),
+                verified: false,
+                status: VerificationStatus::Expired,
+                summary: format!("Credential expired on {}.", expired_since),
+                reasons: vec!["on_chain_expiry".to_string()],
+                issuer: None,
+                domain: None,
+                template: None,
+                revocation: None,
+                dispute: None,
+                policy_version: policy.version,
+                checked_at: Utc::now().to_rfc3339(),
+                evidence: Some(json!({"source": "onchain", "expiry_unix": expiry_unix})),
+                credential_metadata: on_chain_transferable
+                    .map(|value| json!({"schema_version": 1, "expiry_iso": expired_since, "transferable": value})),
+                on_chain_transferable,
+                latency_ms: started_at.elapsed().as_millis() as u64,
+                cache_hit: false,
+                compat_notice: Some("field 'verified' remains for v1 compatibility and is deprecated for future v3 clients".to_string()),
+            });
+        }
+
+        let mut credential_metadata = extract_credential_metadata(content.as_ref());
+        if let Some(transferable) = on_chain_transferable {
+            if let Some(meta_obj) = credential_metadata
+                .as_mut()
+                .and_then(|value| value.as_object_mut())
+            {
+                meta_obj.insert("transferable".to_string(), json!(transferable));
+            } else {
+                credential_metadata = Some(json!({"schema_version": 1, "transferable": transferable}));
+            }
+        }
+
         let inputs = parse_policy_inputs(content.as_ref());
         let mut verdict = evaluate_policy(notarization_id, &policy, inputs, check_time);
         verdict.evidence = Some(
@@ -342,6 +472,8 @@ impl NotarizationService {
         );
         verdict.latency_ms = started_at.elapsed().as_millis() as u64;
         verdict.cache_hit = false;
+        verdict.credential_metadata = credential_metadata;
+        verdict.on_chain_transferable = on_chain_transferable;
         verdict.compat_notice = Some(
             "field 'verified' remains for v1 compatibility and is deprecated for future v3 clients"
                 .to_string(),
@@ -432,6 +564,9 @@ fn evaluate_policy(
                 "change_author": policy.change_author,
                 "evidence_id": revocation.evidence_id,
             })),
+            credential_metadata: None,
+            on_chain_transferable: None,
+
             latency_ms: 0,
             cache_hit: false,
             compat_notice: None,
@@ -453,6 +588,9 @@ fn evaluate_policy(
             policy_version: policy.version.clone(),
             checked_at,
             evidence: Some(json!({"source": "metadata", "change_author": policy.change_author})),
+            credential_metadata: None,
+            on_chain_transferable: None,
+
             latency_ms: 0,
             cache_hit: false,
             compat_notice: None,
@@ -476,6 +614,9 @@ fn evaluate_policy(
                 policy_version: policy.version.clone(),
                 checked_at,
                 evidence: Some(json!({"source": "policy", "change_author": policy.change_author})),
+                credential_metadata: None,
+                on_chain_transferable: None,
+
                 latency_ms: 0,
                 cache_hit: false,
                 compat_notice: None,
@@ -499,6 +640,9 @@ fn evaluate_policy(
                 policy_version: policy.version.clone(),
                 checked_at,
                 evidence: Some(json!({"source": "policy", "change_author": policy.change_author})),
+                credential_metadata: None,
+                on_chain_transferable: None,
+
                 latency_ms: 0,
                 cache_hit: false,
                 compat_notice: None,
@@ -523,6 +667,9 @@ fn evaluate_policy(
                 policy_version: policy.version.clone(),
                 checked_at,
                 evidence: Some(json!({"source": "policy", "change_author": policy.change_author})),
+                credential_metadata: None,
+                on_chain_transferable: None,
+
                 latency_ms: 0,
                 cache_hit: false,
                 compat_notice: None,
@@ -547,6 +694,9 @@ fn evaluate_policy(
                 policy_version: policy.version.clone(),
                 checked_at,
                 evidence: Some(json!({"source": "policy", "change_author": policy.change_author})),
+                credential_metadata: None,
+                on_chain_transferable: None,
+
                 latency_ms: 0,
                 cache_hit: false,
                 compat_notice: None,
@@ -572,6 +722,9 @@ fn evaluate_policy(
                 policy_version: policy.version.clone(),
                 checked_at,
                 evidence: Some(json!({"source": "policy", "change_author": policy.change_author})),
+                credential_metadata: None,
+                on_chain_transferable: None,
+
                 latency_ms: 0,
                 cache_hit: false,
                 compat_notice: None,
@@ -596,6 +749,9 @@ fn evaluate_policy(
                     policy_version: policy.version.clone(),
                     checked_at,
                     evidence: Some(json!({"source": "policy", "change_author": policy.change_author})),
+                    credential_metadata: None,
+                    on_chain_transferable: None,
+
                     latency_ms: 0,
                     cache_hit: false,
                     compat_notice: None,
@@ -620,6 +776,9 @@ fn evaluate_policy(
                 policy_version: policy.version.clone(),
                 checked_at,
                 evidence: Some(json!({"source": "policy", "change_author": policy.change_author})),
+                credential_metadata: None,
+                on_chain_transferable: None,
+
                 latency_ms: 0,
                 cache_hit: false,
                 compat_notice: None,
@@ -643,6 +802,9 @@ fn evaluate_policy(
                 policy_version: policy.version.clone(),
                 checked_at,
                 evidence: Some(json!({"source": "policy", "change_author": policy.change_author})),
+                credential_metadata: None,
+                on_chain_transferable: None,
+
                 latency_ms: 0,
                 cache_hit: false,
                 compat_notice: None,
@@ -673,6 +835,9 @@ fn evaluate_policy(
                 policy_version: policy.version.clone(),
                 checked_at,
                 evidence: Some(json!({"source": "policy", "change_author": policy.change_author})),
+                credential_metadata: None,
+                on_chain_transferable: None,
+
                 latency_ms: 0,
                 cache_hit: false,
                 compat_notice: None,
@@ -698,9 +863,50 @@ fn evaluate_policy(
         policy_version: policy.version.clone(),
         checked_at,
         evidence: Some(json!({"source": "policy", "change_author": policy.change_author})),
+        credential_metadata: None,
+        on_chain_transferable: None,
+
         latency_ms: 0,
         cache_hit: false,
         compat_notice: None,
+    }
+}
+
+fn extract_on_chain_status(content: Option<&serde_json::Value>) -> (bool, u64, Option<bool>) {
+    let Some(content) = content else {
+        return (false, 0, None);
+    };
+
+    let fields = find_nested_value_by_keys(content, &["fields"]).unwrap_or(content);
+    let revoked = find_nested_value_by_keys(fields, &["revoked"])
+        .and_then(parse_bool_value)
+        .unwrap_or(false);
+    let expiry_unix = find_nested_value_by_keys(fields, &["expiry_unix"])
+        .and_then(parse_u64_value)
+        .unwrap_or(0);
+    let transferable = find_nested_value_by_keys(fields, &["transferable"]).and_then(parse_bool_value);
+    (revoked, expiry_unix, transferable)
+}
+
+fn parse_bool_value(value: &serde_json::Value) -> Option<bool> {
+    match value {
+        serde_json::Value::Bool(v) => Some(*v),
+        serde_json::Value::String(v) => match v.trim().to_ascii_lowercase().as_str() {
+            "true" | "1" => Some(true),
+            "false" | "0" => Some(false),
+            _ => None,
+        },
+        serde_json::Value::Object(map) => map.get("value").and_then(parse_bool_value),
+        _ => None,
+    }
+}
+
+fn parse_u64_value(value: &serde_json::Value) -> Option<u64> {
+    match value {
+        serde_json::Value::Number(v) => v.as_u64(),
+        serde_json::Value::String(v) => v.trim().parse::<u64>().ok(),
+        serde_json::Value::Object(map) => map.get("value").and_then(parse_u64_value),
+        _ => None,
     }
 }
 
@@ -734,7 +940,7 @@ async fn check_rpc_reachability(node_url: &str) -> anyhow::Result<()> {
 }
 
 fn extract_policy_metadata(content: &serde_json::Value) -> serde_json::Map<String, serde_json::Value> {
-    if let Some(value) = find_nested_value_by_keys(content, &["state_metadata", "metadata"]) {
+    if let Some(value) = find_nested_value_by_keys(content, &["state_metadata", "metadata", "asset_meta", "assetMeta"]) {
         if let Some(map) = parse_json_object(value) {
             return map;
         }
@@ -768,10 +974,33 @@ fn find_nested_value_by_keys<'a>(value: &'a serde_json::Value, keys: &[&str]) ->
 
 fn parse_json_object(value: &serde_json::Value) -> Option<serde_json::Map<String, serde_json::Value>> {
     match value {
-        serde_json::Value::Object(map) => Some(map.clone()),
+        serde_json::Value::Object(map) => {
+            if let Some(inner) = map.get("value") {
+                if let Some(parsed) = parse_json_object(inner) {
+                    return Some(parsed);
+                }
+            }
+            if let Some(inner) = map.get("bytes") {
+                if let Some(parsed) = parse_json_object(inner) {
+                    return Some(parsed);
+                }
+            }
+            Some(map.clone())
+        }
         serde_json::Value::String(raw) => serde_json::from_str::<serde_json::Value>(raw)
             .ok()
             .and_then(|parsed| parsed.as_object().cloned()),
+        serde_json::Value::Array(items) => {
+            let bytes: Option<Vec<u8>> = items
+                .iter()
+                .map(|entry| entry.as_u64().and_then(|value| u8::try_from(value).ok()))
+                .collect();
+            let bytes = bytes?;
+            let raw = String::from_utf8(bytes).ok()?;
+            serde_json::from_str::<serde_json::Value>(&raw)
+                .ok()
+                .and_then(|parsed| parsed.as_object().cloned())
+        }
         _ => None,
     }
 }
@@ -797,6 +1026,42 @@ fn get_metadata_bool(metadata: &serde_json::Map<String, serde_json::Value>, keys
             _ => false,
         })
     })
+}
+
+fn extract_credential_metadata(content: Option<&serde_json::Value>) -> Option<serde_json::Value> {
+    let Some(content) = content else {
+        return None;
+    };
+
+    let Some(raw_state_metadata) = find_nested_value_by_keys(content, &["state_metadata", "metadata", "asset_meta", "assetMeta"]) else {
+        return None;
+    };
+
+    let parsed_object = parse_json_object(raw_state_metadata)?;
+    let parsed = serde_json::Value::Object(parsed_object);
+
+    let schema_version = parsed
+        .get("schema_version")
+        .and_then(|value| value.as_u64())
+        .unwrap_or_default();
+    if schema_version != 1 {
+        return None;
+    }
+
+    let credential_type = parsed
+        .get("credential_type")
+        .and_then(|value| value.as_str())
+        .unwrap_or("unknown");
+    println!(
+        "{}",
+        json!({
+            "event": "parsed_credential_metadata",
+            "schema_version": schema_version,
+            "credential_type": credential_type,
+        })
+    );
+
+    Some(parsed)
 }
 
 #[cfg(test)]

@@ -290,3 +290,8 @@ public fun template_deprecated(t: &CredentialTypeTemplate): bool { t.deprecated 
 public fun template_superseded_by(t: &CredentialTypeTemplate): &Option<ID> { &t.superseded_by }
 
 public fun template_law_reference(t: &CredentialTypeTemplate): &Option<String> { &t.law_reference }
+
+/// Returns the domain ID this capability governs.
+public fun cap_domain_id(cap: &DomainAdminCap): ID {
+    cap.domain_id
+}

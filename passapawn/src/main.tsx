@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "@iota/dapp-kit/dist/index.css";
 import "@radix-ui/themes/styles.css";
+import "./App.css";
 
 import { IotaClientProvider, WalletProvider } from "@iota/dapp-kit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

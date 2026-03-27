@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./src/notarization-service
+    env_file:
+      - ./src/notarization-service/.env
+    environment:
+      - NOTARIZATION_BIND_ADDR=0.0.0.0:3001
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/data
