@@ -74,6 +74,9 @@ pub enum TransactionArg {
     PureBool {
         value: bool,
     },
+    PureBcsBytes {
+        value: Vec<u8>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]

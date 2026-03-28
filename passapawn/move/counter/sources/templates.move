@@ -30,11 +30,19 @@ entry fun submit_proposal(
     field_types: vector<u8>,
     field_required_flags: vector<bool>,
     field_descriptions: vector<String>,
+    field_min_lengths: vector<u64>,
+    field_max_lengths: vector<u64>,
+    field_min_values: vector<u64>,
+    field_max_values: vector<u64>,
+    field_pattern_hints: vector<String>,
     schema_authority_did: String,
     supersedes_opt: Option<ID>,
     ctx: &TxContext,
 ) {
-    let fields = zip_fields(field_names, field_types, field_required_flags, field_descriptions);
+    let fields = zip_fields(
+        field_names, field_types, field_required_flags, field_descriptions,
+        field_min_lengths, field_max_lengths, field_min_values, field_max_values, field_pattern_hints,
+    );
     credential_domain::submit_proposal(
         domain,
         credential_type,
@@ -66,13 +74,21 @@ entry fun decree_template(
     field_types: vector<u8>,
     field_required_flags: vector<bool>,
     field_descriptions: vector<String>,
+    field_min_lengths: vector<u64>,
+    field_max_lengths: vector<u64>,
+    field_min_values: vector<u64>,
+    field_max_values: vector<u64>,
+    field_pattern_hints: vector<String>,
     schema_authority_did: String,
     law_reference: String,
     supersedes_opt: Option<ID>,
     version: u64,
     ctx: &mut TxContext,
 ) {
-    let fields = zip_fields(field_names, field_types, field_required_flags, field_descriptions);
+    let fields = zip_fields(
+        field_names, field_types, field_required_flags, field_descriptions,
+        field_min_lengths, field_max_lengths, field_min_values, field_max_values, field_pattern_hints,
+    );
     credential_domain::decree_template(
         cap,
         domain,
@@ -91,14 +107,32 @@ fun zip_fields(
     types: vector<u8>,
     required: vector<bool>,
     descriptions: vector<String>,
+    min_lengths: vector<u64>,
+    max_lengths: vector<u64>,
+    min_values: vector<u64>,
+    max_values: vector<u64>,
+    pattern_hints: vector<String>,
 ): vector<field_schema::FieldDescriptor> {
     let len = names.length();
-    assert!(len == types.length() && len == required.length() && len == descriptions.length(), 100);
+    assert!(
+        len == types.length()
+        && len == required.length()
+        && len == descriptions.length()
+        && len == min_lengths.length()
+        && len == max_lengths.length()
+        && len == min_values.length()
+        && len == max_values.length()
+        && len == pattern_hints.length(),
+        100,
+    );
 
     let mut fields = vector[];
     let mut i = 0;
     while (i < len) {
-        fields.push_back(field_schema::new(names[i], types[i], required[i], descriptions[i]));
+        fields.push_back(field_schema::new_field_with_constraints(
+            names[i], types[i], required[i], descriptions[i],
+            min_lengths[i], max_lengths[i], min_values[i], max_values[i], pattern_hints[i],
+        ));
         i = i + 1;
     };
     fields

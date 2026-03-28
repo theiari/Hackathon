@@ -1,24 +1,17 @@
 import { useCurrentAccount, useSignPersonalMessage } from "@iota/dapp-kit";
 import { useEffect, useMemo, useState } from "react";
+import { Wallet, RefreshCw, Share2, FileSignature, ExternalLink, Copy, ChevronDown, ChevronRight, LayoutGrid, List, QrCode } from "lucide-react";
 import { fetchHolderCredentials, type HolderCredential } from "../notarizationApi";
 import { CredentialMetadataCard } from "./CredentialMetadataCard";
-import { InfoHint } from "./InfoHint";
 import { StatusBadge } from "./StatusBadge";
+import { QrModal } from "./QrModal";
 
 const MAX_VISIBLE_CREDENTIALS = 10;
 
 type ViewMode = "grid" | "list";
 type VisibilityFilter = "all" | "public" | "private";
 type ValidityFilter = "all" | "valid" | "invalid";
-type SortBy =
-  | "issued_desc"
-  | "issued_asc"
-  | "type_asc"
-  | "type_desc"
-  | "status_asc"
-  | "status_desc"
-  | "fetched_desc"
-  | "fetched_asc";
+type SortBy = "issued_desc" | "issued_asc" | "type_asc" | "type_desc" | "status_asc" | "status_desc" | "fetched_desc" | "fetched_asc";
 
 function truncateId(value: string) {
   if (value.length <= 18) return value;
@@ -51,6 +44,8 @@ export function HolderView({
   const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>("all");
   const [validityFilter, setValidityFilter] = useState<ValidityFilter>("all");
   const [sortBy, setSortBy] = useState<SortBy>("issued_desc");
+  const [showFilters, setShowFilters] = useState(false);
+  const [qrUrl, setQrUrl] = useState("");
 
   const refresh = async () => {
     if (!address) return;
@@ -74,145 +69,78 @@ export function HolderView({
     }
   };
 
-  useEffect(() => {
-    void refresh();
-  }, [address]);
+  useEffect(() => { void refresh(); }, [address]);
 
   const addressLabel = useMemo(() => (address ? truncateId(address) : "n/a"), [address]);
 
   const typeOptions = useMemo(() => {
     const options = new Set<string>();
-    for (const credential of credentials) {
-      const typ = credential.verdict.credential_metadata?.credential_type?.trim();
-      if (typ) {
-        options.add(typ);
-      }
+    for (const cred of credentials) {
+      const typ = cred.verdict.credential_metadata?.credential_type?.trim();
+      if (typ) options.add(typ);
     }
-    return Array.from(options).sort((a, b) => a.localeCompare(b));
+    return Array.from(options).sort();
   }, [credentials]);
 
   const filteredCredentials = useMemo(() => {
-    const toTimestamp = (value?: string | null) => {
-      if (!value) return 0;
-      const parsed = Date.parse(value);
-      return Number.isFinite(parsed) ? parsed : 0;
-    };
-
-    const dayStart = (value: string) => (value ? new Date(`${value}T00:00:00`).getTime() : Number.NEGATIVE_INFINITY);
-    const dayEnd = (value: string) => (value ? new Date(`${value}T23:59:59`).getTime() : Number.POSITIVE_INFINITY);
-
+    const toTs = (v?: string | null) => { if (!v) return 0; const p = Date.parse(v); return Number.isFinite(p) ? p : 0; };
+    const dayStart = (v: string) => (v ? new Date(`${v}T00:00:00`).getTime() : Number.NEGATIVE_INFINITY);
+    const dayEnd = (v: string) => (v ? new Date(`${v}T23:59:59`).getTime() : Number.POSITIVE_INFINITY);
     const from = dayStart(dateFrom);
     const to = dayEnd(dateTo);
 
-    const filtered = credentials.filter((credential) => {
-      const metadata = credential.verdict.credential_metadata;
-      const issuedAt = metadata?.issued_at;
-      const issuedTs = toTimestamp(issuedAt);
-      const credentialType = metadata?.credential_type ?? "Credential";
+    const filtered = credentials.filter((c) => {
+      const meta = c.verdict.credential_metadata;
+      const issuedTs = toTs(meta?.issued_at);
+      const credType = meta?.credential_type ?? "Credential";
+      const hasPub = Object.keys(meta?.public_fields ?? {}).length > 0;
+      const hasPriv = Object.keys(meta?.hashed_fields ?? {}).length > 0;
 
-      const hasPublic = Object.keys(metadata?.public_fields ?? {}).length > 0;
-      const hasPrivate = Object.keys(metadata?.hashed_fields ?? {}).length > 0;
-
-      if (typeFilter !== "all" && credentialType !== typeFilter) {
-        return false;
-      }
-
-      if (validityFilter === "valid" && credential.verdict.status !== "valid") {
-        return false;
-      }
-      if (validityFilter === "invalid" && credential.verdict.status === "valid") {
-        return false;
-      }
-
-      if (visibilityFilter === "public" && !hasPublic) {
-        return false;
-      }
-      if (visibilityFilter === "private" && !hasPrivate) {
-        return false;
-      }
-
-      if (dateFrom || dateTo) {
-        if (!issuedAt) {
-          return false;
-        }
-        if (issuedTs < from || issuedTs > to) {
-          return false;
-        }
-      }
-
+      if (typeFilter !== "all" && credType !== typeFilter) return false;
+      if (validityFilter === "valid" && c.verdict.status !== "valid") return false;
+      if (validityFilter === "invalid" && c.verdict.status === "valid") return false;
+      if (visibilityFilter === "public" && !hasPub) return false;
+      if (visibilityFilter === "private" && !hasPriv) return false;
+      if ((dateFrom || dateTo) && (!meta?.issued_at || issuedTs < from || issuedTs > to)) return false;
       return true;
     });
 
     filtered.sort((a, b) => {
-      const metadataA = a.verdict.credential_metadata;
-      const metadataB = b.verdict.credential_metadata;
-
-      const issuedA = toTimestamp(metadataA?.issued_at);
-      const issuedB = toTimestamp(metadataB?.issued_at);
-      const fetchedA = toTimestamp(a.fetched_at);
-      const fetchedB = toTimestamp(b.fetched_at);
-      const typeA = (metadataA?.credential_type ?? "Credential").toLowerCase();
-      const typeB = (metadataB?.credential_type ?? "Credential").toLowerCase();
-      const statusA = a.verdict.status.toLowerCase();
-      const statusB = b.verdict.status.toLowerCase();
+      const mA = a.verdict.credential_metadata;
+      const mB = b.verdict.credential_metadata;
+      const iA = toTs(mA?.issued_at), iB = toTs(mB?.issued_at);
+      const fA = toTs(a.fetched_at), fB = toTs(b.fetched_at);
+      const tA = (mA?.credential_type ?? "").toLowerCase(), tB = (mB?.credential_type ?? "").toLowerCase();
+      const sA = a.verdict.status.toLowerCase(), sB = b.verdict.status.toLowerCase();
 
       switch (sortBy) {
-        case "issued_asc":
-          return issuedA - issuedB;
-        case "issued_desc":
-          return issuedB - issuedA;
-        case "type_asc":
-          return typeA.localeCompare(typeB);
-        case "type_desc":
-          return typeB.localeCompare(typeA);
-        case "status_asc":
-          return statusA.localeCompare(statusB);
-        case "status_desc":
-          return statusB.localeCompare(statusA);
-        case "fetched_asc":
-          return fetchedA - fetchedB;
-        case "fetched_desc":
-          return fetchedB - fetchedA;
-        default:
-          return 0;
+        case "issued_asc": return iA - iB;
+        case "issued_desc": return iB - iA;
+        case "type_asc": return tA.localeCompare(tB);
+        case "type_desc": return tB.localeCompare(tA);
+        case "status_asc": return sA.localeCompare(sB);
+        case "status_desc": return sB.localeCompare(sA);
+        case "fetched_asc": return fA - fB;
+        case "fetched_desc": return fB - fA;
+        default: return 0;
       }
     });
 
     return filtered;
   }, [credentials, dateFrom, dateTo, sortBy, typeFilter, validityFilter, visibilityFilter]);
 
-  const expandAll = () => {
-    setExpanded(Object.fromEntries(filteredCredentials.map((credential) => [credential.id, true])));
-  };
+  const buildPresentationMessage = (credId: string, holder: string, ts: string, nonce: string) =>
+    ["Passapawn Credential Presentation", `credential_id: ${credId}`, `holder: ${holder}`, `timestamp: ${ts}`, `nonce: ${nonce}`].join("\n");
 
-  const collapseAll = () => {
-    setExpanded({});
-  };
-
-  const buildPresentationMessage = (credentialId: string, holderAddress: string, timestamp: string, nonce: string) =>
-    [
-      "Passapawn Credential Presentation",
-      `credential_id: ${credentialId}`,
-      `holder: ${holderAddress}`,
-      `timestamp: ${timestamp}`,
-      `nonce: ${nonce}`,
-    ].join("\n");
-
-  const toBase64 = (value: string | Uint8Array) => {
-    if (typeof value === "string") return value;
-    let binary = "";
-    value.forEach((byte) => {
-      binary += String.fromCharCode(byte);
-    });
-    return btoa(binary);
+  const toBase64 = (v: string | Uint8Array) => {
+    if (typeof v === "string") return v;
+    let bin = "";
+    v.forEach((b) => { bin += String.fromCharCode(b); });
+    return btoa(bin);
   };
 
   const presentCredential = (credential: HolderCredential) => {
-    if (!account?.address) {
-      setPresentationError("Signing failed — wallet rejected the request.");
-      return;
-    }
-
+    if (!account?.address) { setPresentationError("Connect your wallet to sign presentations."); return; }
     setPresentationError("");
     const timestamp = new Date().toISOString();
     const nonce = crypto.randomUUID();
@@ -222,228 +150,236 @@ export function HolderView({
       { message: new TextEncoder().encode(message) },
       {
         onSuccess: async ({ bytes, signature }) => {
-          const tokenPayload = {
+          const token = btoa(JSON.stringify({
             credential_id: credential.id,
             holder: account.address,
             timestamp,
             nonce,
             signature: typeof signature === "string" ? signature : toBase64(signature),
             message_bytes: toBase64(bytes),
-          };
-          const token = btoa(JSON.stringify(tokenPayload));
+          }));
           const url = `${window.location.origin}?present=${encodeURIComponent(token)}`;
           await navigator.clipboard.writeText(url);
           setCopiedId(`present:${credential.id}`);
           setTimeout(() => setCopiedId(""), 3000);
         },
-        onError: () => {
-          setPresentationError("Signing failed — wallet rejected the request.");
-        },
+        onError: () => { setPresentationError("Signing failed — wallet rejected the request."); },
       },
     );
   };
 
   if (!address) {
     return (
-      <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 shadow-md">
-        <h3 className="text-xl font-semibold text-white">My Credentials</h3>
-        <p className="mt-2 text-sm text-gray-400">Connect your wallet to load your credential dashboard.</p>
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-gray-700/50 bg-gray-900/60 px-8 py-12 text-center">
+        <Wallet className="h-10 w-10 text-gray-500" />
+        <p className="text-lg font-medium text-gray-300">My Credentials</p>
+        <p className="text-sm text-gray-500">Connect your wallet to see credentials issued to you.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 shadow-md">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="rounded-2xl border border-gray-800/60 bg-gray-900/60">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800/40 px-5 py-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-xl font-semibold text-white">My Credentials</h3>
-            <InfoHint text="This view loads notarization objects owned by your wallet and enriches them with live trust verdicts." />
-          </div>
-          <p className="text-xs text-gray-400">Wallet: {addressLabel}</p>
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
+            <Wallet className="h-4 w-4 text-indigo-400" />
+            My Credentials
+          </h3>
+          <p className="mt-0.5 text-[11px] text-gray-500">Wallet: {addressLabel}</p>
         </div>
-        <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700" onClick={() => void refresh()}>
+        <button
+          className="flex items-center gap-1.5 rounded-lg border border-gray-700/50 px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-gray-800/60 hover:text-white"
+          onClick={() => void refresh()}
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           Refresh
         </button>
       </div>
 
-      {loading && (
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-36 animate-pulse rounded-lg border border-gray-700 bg-gray-800/40" />
-          ))}
-        </div>
-      )}
-
-      {!loading && error && (
-        <div className="mt-4 rounded-lg border border-red-700 bg-red-900/30 p-4 text-sm text-red-200">
-          <p>⚠️ Could not load credentials — check your connection.</p>
-          <button className="mt-3 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white" onClick={() => void refresh()}>
-            Retry
-          </button>
-        </div>
-      )}
-
-      {!loading && !error && credentials.length === 0 && (
-        <div className="mt-6 rounded-lg border border-gray-700 p-6 text-center">
-          <p className="text-3xl">📭</p>
-          <p className="mt-2 font-semibold text-white">No credentials found</p>
-          <p className="mt-1 text-sm text-gray-400">Ask your institution to issue a credential to your address.</p>
-          <p className="mt-1 text-xs font-mono text-gray-500">Address queried: {addressLabel}</p>
-        </div>
-      )}
-
-      {!loading && !error && credentials.length > 0 && (
-        <>
-          {truncated && <p className="mt-3 text-xs text-yellow-300">Showing first {MAX_VISIBLE_CREDENTIALS} credentials.</p>}
-          {presentationError && <p className="mt-3 text-xs text-red-300">{presentationError}</p>}
-          <div className="mt-4 rounded-lg border border-gray-800 bg-gray-950/40 p-3">
-            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-              <select
-                className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-xs text-gray-100"
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-              >
-                <option value="all">All types</option>
-                {typeOptions.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-xs text-gray-100"
-                value={validityFilter}
-                onChange={(e) => setValidityFilter(e.target.value as ValidityFilter)}
-              >
-                <option value="all">All validity</option>
-                <option value="valid">Valid only</option>
-                <option value="invalid">Invalid only</option>
-              </select>
-              <select
-                className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-xs text-gray-100"
-                value={visibilityFilter}
-                onChange={(e) => setVisibilityFilter(e.target.value as VisibilityFilter)}
-              >
-                <option value="all">All visibility</option>
-                <option value="public">Has public fields</option>
-                <option value="private">Has private fields</option>
-              </select>
-              <select
-                className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-xs text-gray-100"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortBy)}
-              >
-                <option value="issued_desc">Issued date: newest</option>
-                <option value="issued_asc">Issued date: oldest</option>
-                <option value="type_asc">Type: A to Z</option>
-                <option value="type_desc">Type: Z to A</option>
-                <option value="status_asc">Status: A to Z</option>
-                <option value="status_desc">Status: Z to A</option>
-                <option value="fetched_desc">Fetched: newest</option>
-                <option value="fetched_asc">Fetched: oldest</option>
-              </select>
-              <input
-                type="date"
-                className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-xs text-gray-100"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                title="Issued from"
-              />
-              <input
-                type="date"
-                className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-xs text-gray-100"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                title="Issued to"
-              />
-              <div className="flex items-center gap-2">
-                <button
-                  className={`rounded border px-3 py-2 text-xs ${viewMode === "grid" ? "border-indigo-500 text-indigo-300" : "border-gray-700 text-gray-300"}`}
-                  onClick={() => setViewMode("grid")}
-                >
-                  Grid
-                </button>
-                <button
-                  className={`rounded border px-3 py-2 text-xs ${viewMode === "list" ? "border-indigo-500 text-indigo-300" : "border-gray-700 text-gray-300"}`}
-                  onClick={() => setViewMode("list")}
-                >
-                  List
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <button className="rounded border border-gray-700 px-3 py-2 text-xs text-gray-200" onClick={expandAll}>
-                  Expand all
-                </button>
-                <button className="rounded border border-gray-700 px-3 py-2 text-xs text-gray-200" onClick={collapseAll}>
-                  Collapse all
-                </button>
-              </div>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-gray-400">
-                Showing {filteredCredentials.length} of {credentials.length} loaded credentials
-              </p>
-              {fetchedAt && (
-                <p className="text-xs text-gray-500">Last refresh: {new Date(fetchedAt).toLocaleString()}</p>
-              )}
-            </div>
-          </div>
-          <div className={`mt-4 ${viewMode === "grid" ? "grid gap-4 md:grid-cols-2" : "space-y-3"}`}>
-            {filteredCredentials.map((credential) => (
-              <div key={credential.id} className={`rounded-xl border border-gray-800 bg-gray-900 p-4 ${viewMode === "list" ? "flex flex-col gap-2" : ""}`}>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs text-gray-300">{truncateId(credential.id)}</span>
-                  <StatusBadge status={credential.verdict.status} />
-                </div>
-                <p className="mt-2 text-xs text-gray-400">Domain: {credential.domain_id ? truncateId(credential.domain_id) : "n/a"}</p>
-                <p className="mt-2 text-xs italic text-gray-400">Preview: {credential.asset_meta_preview || "(empty)"}</p>
-                <p className="mt-2 text-xs text-gray-500">
-                  Type: {credential.verdict.credential_metadata?.credential_type ?? "Credential"}
-                  {credential.verdict.credential_metadata?.issued_at
-                    ? ` • Issued: ${new Date(credential.verdict.credential_metadata.issued_at).toLocaleDateString()}`
-                    : ""}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    className="rounded-lg border border-gray-600 px-3 py-2 text-xs font-semibold text-white"
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(`${window.location.origin}?verify=${encodeURIComponent(credential.id)}`);
-                      setCopiedId(`share:${credential.id}`);
-                      setTimeout(() => setCopiedId(""), 2000);
-                    }}
-                  >
-                    {copiedId === `share:${credential.id}` ? "Copied! ✓" : "Share 🔗"}
-                  </button>
-                  <button
-                    className="rounded-lg border border-gray-600 px-3 py-2 text-xs font-semibold text-white"
-                    onClick={() => presentCredential(credential)}
-                  >
-                    {copiedId === `present:${credential.id}` ? "Copied presentation! ✓" : "Present 🔏"}
-                  </button>
-                  <button className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white" onClick={() => onNavigateToVerify(credential.id)}>
-                    Verify →
-                  </button>
-                  <button
-                    className="rounded-lg border border-gray-600 px-3 py-2 text-xs font-semibold text-white"
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(credential.id);
-                      setCopiedId(`id:${credential.id}`);
-                      setTimeout(() => setCopiedId(""), 2000);
-                    }}
-                  >
-                    {copiedId === `id:${credential.id}` ? "Copied!" : "Copy ID"}
-                  </button>
-                  <button className="rounded-lg border border-gray-600 px-3 py-2 text-xs font-semibold text-white" onClick={() => setExpanded((prev) => ({ ...prev, [credential.id]: !prev[credential.id] }))}>
-                    {expanded[credential.id] ? "Hide details" : "Expand"}
-                  </button>
-                </div>
-                {expanded[credential.id] && <CredentialMetadataCard metadata={credential.verdict.credential_metadata} className="mt-3" />}
-              </div>
+      <div className="px-5 py-5">
+        {/* Loading skeletons */}
+        {loading && !credentials.length && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-32 animate-pulse rounded-xl border border-gray-800/30 bg-gray-800/20" />
             ))}
           </div>
-        </>
-      )}
+        )}
+
+        {/* Error */}
+        {!loading && error && (
+          <div className="rounded-xl border border-red-800/40 bg-red-900/10 p-4">
+            <p className="text-sm text-red-300">Could not load credentials. Check your connection.</p>
+            <button className="mt-3 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white" onClick={() => void refresh()}>
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && !error && credentials.length === 0 && (
+          <div className="flex flex-col items-center gap-2 py-8 text-center">
+            <Wallet className="h-10 w-10 text-gray-600" />
+            <p className="font-medium text-gray-300">No credentials found</p>
+            <p className="text-sm text-gray-500">Ask your institution to issue a credential to your address.</p>
+          </div>
+        )}
+
+        {/* Credentials list */}
+        {!loading && !error && credentials.length > 0 && (
+          <div className="space-y-4">
+            {truncated && <p className="text-xs text-yellow-400/80">Showing first {MAX_VISIBLE_CREDENTIALS} credentials.</p>}
+            {presentationError && <p className="text-xs text-red-300">{presentationError}</p>}
+
+            {/* Filters */}
+            <div>
+              <button
+                className="flex items-center gap-1.5 text-xs text-gray-500 transition-colors hover:text-gray-300"
+                onClick={() => setShowFilters((v) => !v)}
+              >
+                {showFilters ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                Filters & sorting
+              </button>
+              {showFilters && (
+                <div className="mt-2 grid gap-2 rounded-xl border border-gray-800/40 bg-gray-800/10 p-3 sm:grid-cols-2 md:grid-cols-3">
+                  <select className="rounded-lg border border-gray-700/60 bg-gray-800/50 px-2.5 py-1.5 text-xs text-gray-100" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                    <option value="all">All types</option>
+                    {typeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <select className="rounded-lg border border-gray-700/60 bg-gray-800/50 px-2.5 py-1.5 text-xs text-gray-100" value={validityFilter} onChange={(e) => setValidityFilter(e.target.value as ValidityFilter)}>
+                    <option value="all">All validity</option>
+                    <option value="valid">Valid only</option>
+                    <option value="invalid">Invalid only</option>
+                  </select>
+                  <select className="rounded-lg border border-gray-700/60 bg-gray-800/50 px-2.5 py-1.5 text-xs text-gray-100" value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value as VisibilityFilter)}>
+                    <option value="all">All visibility</option>
+                    <option value="public">Has public fields</option>
+                    <option value="private">Has private fields</option>
+                  </select>
+                  <select className="rounded-lg border border-gray-700/60 bg-gray-800/50 px-2.5 py-1.5 text-xs text-gray-100" value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}>
+                    <option value="issued_desc">Newest first</option>
+                    <option value="issued_asc">Oldest first</option>
+                    <option value="type_asc">Type A-Z</option>
+                    <option value="type_desc">Type Z-A</option>
+                    <option value="status_asc">Status A-Z</option>
+                    <option value="status_desc">Status Z-A</option>
+                  </select>
+                  <input type="date" className="rounded-lg border border-gray-700/60 bg-gray-800/50 px-2.5 py-1.5 text-xs text-gray-100" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="From date" />
+                  <input type="date" className="rounded-lg border border-gray-700/60 bg-gray-800/50 px-2.5 py-1.5 text-xs text-gray-100" value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="To date" />
+                </div>
+              )}
+            </div>
+
+            {/* View mode + count */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[11px] text-gray-500">
+                {filteredCredentials.length} of {credentials.length} credentials
+                {fetchedAt && <span className="ml-2">· Refreshed: {new Date(fetchedAt).toLocaleTimeString()}</span>}
+              </p>
+              <div className="flex gap-1">
+                <button className={`rounded-lg p-1.5 ${viewMode === "grid" ? "bg-indigo-600/20 text-indigo-300" : "text-gray-500"}`} onClick={() => setViewMode("grid")} title="Grid view">
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+                <button className={`rounded-lg p-1.5 ${viewMode === "list" ? "bg-indigo-600/20 text-indigo-300" : "text-gray-500"}`} onClick={() => setViewMode("list")} title="List view">
+                  <List className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Credential cards */}
+            <div className={viewMode === "grid" ? "grid gap-3 sm:grid-cols-2" : "space-y-3"}>
+              {filteredCredentials.map((credential) => {
+                const meta = credential.verdict.credential_metadata;
+                const credType = meta?.credential_type ?? "Credential";
+                const issuedAt = meta?.issued_at;
+                const isExpanded = expanded[credential.id];
+
+                return (
+                  <div key={credential.id} className="rounded-xl border border-gray-800/40 bg-gray-800/10 p-4 transition-colors hover:border-gray-700/60">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-gray-100">{credType}</p>
+                        <p className="mt-0.5 font-mono text-[11px] text-gray-500">{truncateId(credential.id)}</p>
+                      </div>
+                      <StatusBadge status={credential.verdict.status} />
+                    </div>
+
+                    {credential.domain_id && (
+                      <p className="mt-1.5 text-[11px] text-gray-500">Domain: {truncateId(credential.domain_id)}</p>
+                    )}
+                    {issuedAt && (
+                      <p className="text-[11px] text-gray-500">Issued: {new Date(issuedAt).toLocaleDateString()}</p>
+                    )}
+                    {credential.asset_meta_preview && (
+                      <p className="mt-1 text-xs italic text-gray-400">{credential.asset_meta_preview}</p>
+                    )}
+
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      <button
+                        className="flex items-center gap-1 rounded-lg border border-gray-700/50 px-2.5 py-1.5 text-[11px] text-gray-300 transition-colors hover:text-white"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(`${window.location.origin}?verify=${encodeURIComponent(credential.id)}`);
+                          setCopiedId(`share:${credential.id}`);
+                          setTimeout(() => setCopiedId(""), 2000);
+                        }}
+                      >
+                        <Share2 className="h-3 w-3" />
+                        {copiedId === `share:${credential.id}` ? "Copied!" : "Share"}
+                      </button>
+                      <button
+                        className="flex items-center gap-1 rounded-lg border border-gray-700/50 px-2.5 py-1.5 text-[11px] text-gray-300 transition-colors hover:text-white"
+                        onClick={() => setQrUrl(`${window.location.origin}?verify=${encodeURIComponent(credential.id)}`)}
+                      >
+                        <QrCode className="h-3 w-3" />
+                        QR
+                      </button>
+                      <button
+                        className="flex items-center gap-1 rounded-lg border border-gray-700/50 px-2.5 py-1.5 text-[11px] text-gray-300 transition-colors hover:text-white"
+                        onClick={() => presentCredential(credential)}
+                      >
+                        <FileSignature className="h-3 w-3" />
+                        {copiedId === `present:${credential.id}` ? "Copied!" : "Present"}
+                      </button>
+                      <button
+                        className="flex items-center gap-1 rounded-lg bg-indigo-600/20 px-2.5 py-1.5 text-[11px] text-indigo-300 transition-colors hover:bg-indigo-600/30"
+                        onClick={() => onNavigateToVerify(credential.id)}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Verify
+                      </button>
+                      <button
+                        className="flex items-center gap-1 rounded-lg border border-gray-700/50 px-2.5 py-1.5 text-[11px] text-gray-300 transition-colors hover:text-white"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(credential.id);
+                          setCopiedId(`id:${credential.id}`);
+                          setTimeout(() => setCopiedId(""), 2000);
+                        }}
+                      >
+                        <Copy className="h-3 w-3" />
+                        {copiedId === `id:${credential.id}` ? "Copied!" : "Copy ID"}
+                      </button>
+                      <button
+                        className="flex items-center gap-1 rounded-lg border border-gray-700/50 px-2.5 py-1.5 text-[11px] text-gray-300 transition-colors hover:text-white"
+                        onClick={() => setExpanded((prev) => ({ ...prev, [credential.id]: !prev[credential.id] }))}
+                      >
+                        {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                        Details
+                      </button>
+                    </div>
+
+                    {isExpanded && (
+                      <CredentialMetadataCard metadata={meta} className="mt-3" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+      {qrUrl && <QrModal url={qrUrl} title="Verify Credential" onClose={() => setQrUrl("")} />}
     </div>
   );
 }

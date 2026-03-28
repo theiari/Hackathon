@@ -240,3 +240,44 @@ mod tests {
         assert_eq!(payload["arguments"][2]["kind"], "pure_u64");
     }
 }
+
+// === AA (Account Abstraction) DTOs ===
+
+#[derive(Debug, Deserialize)]
+pub struct CreateAaAccountIntentRequest {
+    pub public_keys_hex: Vec<String>,
+    pub threshold: u64,
+    pub labels: Vec<String>,
+    pub package_metadata_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AaGovernanceIntentRequest {
+    pub aa_account_id: String,
+    pub domain_id: String,
+    pub proposal_id: u64,
+    pub template_version: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AaSigningRequest {
+    pub tx_bytes_b64: String,
+    pub aa_account_id: String,
+    pub threshold: u64,
+    pub signer_count: u64,
+    pub action_description: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AaSubmitRequest {
+    pub tx_bytes_b64: String,
+    pub signatures_hex: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AaSubmitResponse {
+    pub submitted: bool,
+    pub digest: Option<String>,
+    pub error: Option<String>,
+    pub proof_bytes_b64: Option<String>,
+}

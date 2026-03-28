@@ -10,6 +10,7 @@ mod trust_registry;
 mod policy_governance;
 mod onboarding_registry;
 mod secrets;
+mod did;
 
 // PACKAGE REDEPLOYMENT REQUIRED after v5b Move changes.
 // Run: cd move/counter && iota client publish --gas-budget 100000000
@@ -44,6 +45,8 @@ use crate::dto::{
     OpenDisputeRequest, PolicyActivateRequest, PolicyDraftRequest, PolicyRollbackRequest,
     PresentationToken, ResolveDisputeRequest, RevokeCredentialRequest, RevokeOnchainIntentRequest,
     TransactionIntentResponse,
+    CreateAaAccountIntentRequest, AaGovernanceIntentRequest,
+    AaSigningRequest, AaSubmitRequest, AaSubmitResponse,
 };
 use crate::error::ApiError;
 use crate::dynamic_impl::{create_dynamic, transfer_dynamic, update_dynamic_metadata, update_dynamic_state};
@@ -71,6 +74,7 @@ pub(crate) struct AppState {
     cache_misses: Arc<Mutex<u64>>,
     launch_mode: Arc<Mutex<String>>,
     synthetic_status: Arc<Mutex<Option<serde_json::Value>>>,
+    did_registry: crate::did::DidRegistry,
 }
 
 impl AppState {
@@ -237,6 +241,7 @@ async fn main() -> anyhow::Result<()> {
         cache_misses: Arc::new(Mutex::new(0)),
         launch_mode: Arc::new(Mutex::new("dry_run".to_string())),
         synthetic_status: Arc::new(Mutex::new(None)),
+        did_registry: crate::did::DidRegistry::new(),
     };
 
     *state
@@ -295,7 +300,14 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v2/release/artifact", get(release_artifact_v2))
         .route("/api/v2/launch/mode", post(set_launch_mode_v2))
         .route("/api/v2/launch/rollback", post(emergency_rollback_v2))
+        .route("/api/v2/aa/create-account-intent", post(aa_create_account_intent_v2))
+        .route("/api/v2/aa/governance-intent", post(aa_governance_intent_v2))
+        .route("/api/v2/aa/submit", post(aa_submit_v2))
         .route("/api/v2/notarizations/:id/verify", post(verify_notarization))
+        // DID
+        .route("/api/v1/did/create", post(did_create))
+        .route("/api/v1/did/resolve/:did_id", get(did_resolve))
+        .route("/api/v1/did/list", get(did_list))
         // Locked
         .route("/notarizations/locked", post(create_locked))
         // Dynamic
@@ -331,6 +343,52 @@ async fn health_check() -> &'static str {
     "ok"
 }
 
+// ── DID endpoints ──
+
+#[derive(Debug, serde::Deserialize)]
+struct DidCreateRequest {
+    domain_object_id: String,
+    controller_address: String,
+    domain_name: String,
+}
+
+async fn did_create(
+    State(state): State<AppState>,
+    Json(req): Json<DidCreateRequest>,
+) -> Result<Json<crate::did::DidDocument>, ApiError> {
+    if !req.domain_object_id.starts_with("0x") {
+        return Err(ApiError::BadRequest(
+            "domain_object_id must start with 0x".into(),
+        ));
+    }
+    let doc = state.did_registry.create_did_for_domain(
+        &req.domain_object_id,
+        &req.controller_address,
+        &req.domain_name,
+    );
+    Ok(Json(doc))
+}
+
+async fn did_resolve(
+    State(state): State<AppState>,
+    Path(did_id): Path<String>,
+) -> Result<Json<crate::did::DidDocument>, ApiError> {
+    let did = if did_id.starts_with("did:") {
+        did_id
+    } else {
+        format!("did:iota:devnet:{}", did_id.trim_start_matches("0x"))
+    };
+    state
+        .did_registry
+        .resolve(&did)
+        .map(Json)
+        .ok_or_else(|| ApiError::BadRequest(format!("DID not found: {}", did)))
+}
+
+async fn did_list(State(state): State<AppState>) -> Json<Vec<crate::did::DidDocument>> {
+    Json(state.did_registry.list_all())
+}
+
 #[derive(Debug, Serialize)]
 struct HolderCredentialItem {
     id: String,
@@ -364,6 +422,16 @@ struct TemplateField {
     field_type: u8,
     required: bool,
     description: String,
+    #[serde(default)]
+    min_length: u64,
+    #[serde(default)]
+    max_length: u64,
+    #[serde(default)]
+    min_value: u64,
+    #[serde(default)]
+    max_value: u64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pattern_hint: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -488,6 +556,11 @@ async fn get_template_fields_v1(
                 field_type: 0,
                 required: true,
                 description: "Full name of the student".to_string(),
+                min_length: 0,
+                max_length: 0,
+                min_value: 0,
+                max_value: 0,
+                pattern_hint: String::new(),
             }],
         }));
     }
@@ -518,11 +591,29 @@ async fn get_template_fields_v1(
                 .unwrap_or(0);
             let required = extract_field_value(item, &["required"]).is_none_or(|raw| raw == "true" || raw == "1");
             let description = extract_field_value(item, &["description"]).unwrap_or_default();
+            let min_length = extract_field_value(item, &["min_length", "minLength"])
+                .and_then(|raw| raw.parse::<u64>().ok())
+                .unwrap_or(0);
+            let max_length = extract_field_value(item, &["max_length", "maxLength"])
+                .and_then(|raw| raw.parse::<u64>().ok())
+                .unwrap_or(0);
+            let min_value = extract_field_value(item, &["min_value", "minValue"])
+                .and_then(|raw| raw.parse::<u64>().ok())
+                .unwrap_or(0);
+            let max_value = extract_field_value(item, &["max_value", "maxValue"])
+                .and_then(|raw| raw.parse::<u64>().ok())
+                .unwrap_or(0);
+            let pattern_hint = extract_field_value(item, &["pattern_hint", "patternHint"]).unwrap_or_default();
             fields.push(TemplateField {
                 name,
                 field_type,
                 required,
                 description,
+                min_length,
+                max_length,
+                min_value,
+                max_value,
+                pattern_hint,
             });
         }
     }
@@ -533,6 +624,11 @@ async fn get_template_fields_v1(
             field_type: 0,
             required: true,
             description: "Full name of the student".to_string(),
+            min_length: 0,
+            max_length: 0,
+            min_value: 0,
+            max_value: 0,
+            pattern_hint: String::new(),
         });
     }
 
@@ -2206,4 +2302,195 @@ async fn run_synthetic_check(state: &AppState) -> serde_json::Value {
             "latency_ms": started.elapsed().as_millis(),
         }),
     }
+}
+
+// =====================================================================
+//  AA (Account Abstraction) endpoints
+// =====================================================================
+
+async fn aa_create_account_intent_v2(
+    State(state): State<AppState>,
+    Json(req): Json<CreateAaAccountIntentRequest>,
+) -> Result<Json<TransactionIntentResponse>, ApiError> {
+    use crate::model::TransactionArg;
+
+    // Validate: each pubkey_hex must be 64 hex chars (32 bytes)
+    for pk_hex in &req.public_keys_hex {
+        if pk_hex.len() != 64 || !pk_hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(ApiError::BadRequest(format!(
+                "public key '{}' must be 64 hex chars (32 bytes)",
+                &pk_hex[..8.min(pk_hex.len())]
+            )));
+        }
+    }
+
+    // Decode pubkeys to bytes
+    let pubkey_bytes: Vec<Vec<u8>> = req
+        .public_keys_hex
+        .iter()
+        .map(|hex| {
+            (0..32)
+                .map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
+                .collect()
+        })
+        .collect();
+
+    // BCS-encode vector<vector<u8>>
+    let pubkeys_bcs = bcs::to_bytes(&pubkey_bytes)
+        .map_err(|e| ApiError::Internal(format!("bcs encode pubkeys: {e}")))?;
+
+    // BCS-encode vector<String> for labels
+    let labels_bcs = bcs::to_bytes(&req.labels)
+        .map_err(|e| ApiError::Internal(format!("bcs encode labels: {e}")))?;
+
+    let response = TransactionIntentResponse {
+        package_id: state.service.package_id.clone(),
+        target_module: "passapawn_aa".to_string(),
+        target_function: "create".to_string(),
+        arguments: vec![
+            TransactionArg::Object {
+                object_id: req.package_metadata_id.clone(),
+            },
+            TransactionArg::PureBcsBytes {
+                value: pubkeys_bcs,
+            },
+            TransactionArg::PureU64 {
+                value: req.threshold,
+            },
+            TransactionArg::PureBcsBytes {
+                value: labels_bcs,
+            },
+        ],
+    };
+
+    Ok(Json(response))
+}
+
+async fn aa_governance_intent_v2(
+    State(state): State<AppState>,
+    Json(req): Json<AaGovernanceIntentRequest>,
+) -> Result<Json<AaSigningRequest>, ApiError> {
+    // Build a description of what this governance action does
+    let action_description = format!(
+        "Execute proposal #{} on domain {} (template version {})",
+        req.proposal_id,
+        &req.domain_id[..10.min(req.domain_id.len())],
+        req.template_version
+    );
+
+    // Build the unsigned PTB as a TransactionIntentResponse
+    // The frontend will build the actual Transaction from this intent
+    // and use useSignTransaction to collect signatures
+    let intent = TransactionIntentResponse {
+        package_id: state.service.package_id.clone(),
+        target_module: "templates".to_string(),
+        target_function: "execute_proposal".to_string(),
+        arguments: vec![
+            crate::model::TransactionArg::Object {
+                object_id: req.domain_id.clone(),
+            },
+            crate::model::TransactionArg::PureU64 {
+                value: req.proposal_id,
+            },
+            crate::model::TransactionArg::PureU64 {
+                value: req.template_version,
+            },
+        ],
+    };
+
+    // Retrieve threshold/signer_count from localStorage on the frontend side
+    // (they were stored during AA account creation)
+    // For the backend response, we use the values the frontend will provide
+    // or default to 1 if not available
+    Ok(Json(AaSigningRequest {
+        tx_bytes_b64: serde_json::to_string(&intent)
+            .map_err(|e| ApiError::Internal(format!("serialize intent: {e}")))?,
+        aa_account_id: req.aa_account_id,
+        threshold: 1, // frontend overrides from localStorage
+        signer_count: 1, // frontend overrides from localStorage
+        action_description,
+    }))
+}
+
+async fn aa_submit_v2(
+    State(state): State<AppState>,
+    Json(req): Json<AaSubmitRequest>,
+) -> Result<Json<AaSubmitResponse>, ApiError> {
+    // Decode and validate signatures
+    let sigs_bytes: Vec<Vec<u8>> = req
+        .signatures_hex
+        .iter()
+        .map(|hex| {
+            if hex.len() != 128 {
+                return Err(ApiError::BadRequest(format!(
+                    "signature must be 128 hex chars (64 bytes), got {}",
+                    hex.len()
+                )));
+            }
+            Ok((0..64)
+                .map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
+                .collect::<Vec<u8>>())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // BCS-encode the signatures as the AA authenticator proof
+    let proof_bytes = bcs::to_bytes(&sigs_bytes)
+        .map_err(|e| ApiError::Internal(format!("bcs encode sigs: {e}")))?;
+    let proof_b64 =
+        base64::engine::general_purpose::STANDARD.encode(&proof_bytes);
+
+    // Submit via raw JSON-RPC
+    // TODO(iota-aa-rpc): If this submission format is incorrect,
+    // the RPC may return an error. Inspect the error and adjust the
+    // wrapping format. Known alternative: wrap proof_bytes in a
+    // GenericSignature::AccountAuthenticator envelope from iota_types.
+    let rpc_body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "iota_executeTransactionBlock",
+        "params": [
+            req.tx_bytes_b64,
+            [proof_b64],
+            {
+                "showEffects": true,
+                "showObjectChanges": true,
+                "showEvents": true
+            },
+            "WaitForLocalExecution"
+        ]
+    });
+
+    let http_client = reqwest::Client::new();
+    let resp = http_client
+        .post(&state.service.node_url)
+        .json(&rpc_body)
+        .send()
+        .await
+        .map_err(|e| ApiError::Internal(format!("rpc send: {e}")))?;
+
+    let body: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| ApiError::Internal(format!("rpc parse: {e}")))?;
+
+    if let Some(error) = body.get("error") {
+        return Ok(Json(AaSubmitResponse {
+            submitted: false,
+            digest: None,
+            error: Some(error.to_string()),
+            proof_bytes_b64: Some(proof_b64),
+        }));
+    }
+
+    let digest = body
+        .pointer("/result/digest")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+
+    Ok(Json(AaSubmitResponse {
+        submitted: digest.is_some(),
+        digest,
+        error: None,
+        proof_bytes_b64: None,
+    }))
 }

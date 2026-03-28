@@ -1,32 +1,28 @@
 import { ConnectButton } from "@iota/dapp-kit";
+import { Shield } from "lucide-react";
 
 export function WalletHeader({
   network,
-  packageId,
-  connected,
 }: {
   network: string;
-  packageId: string;
-  connected: boolean;
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Passapawn</h1>
-        <p className="text-xs text-gray-400">Tamper-proof credentials, powered by IOTA</p>
+    <header className="border-b border-gray-800/50 bg-gray-950">
+      <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <Shield className="h-7 w-7 text-indigo-400" />
+          <div>
+            <h1 className="text-lg font-bold leading-tight text-white">Passapawn</h1>
+            <p className="text-[11px] leading-tight text-gray-500">Tamper-proof credentials on IOTA</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-0.5 text-[11px] font-medium text-indigo-300">
+            {network}
+          </span>
+          <ConnectButton />
+        </div>
       </div>
-      <div className="flex items-center gap-3">
-        <span className="rounded-full border border-indigo-400/50 bg-indigo-900/40 px-3 py-1 text-xs text-indigo-200">
-          {network}
-        </span>
-        <span className="max-w-[320px] truncate rounded-full border border-gray-700 px-3 py-1 text-xs text-gray-300">
-          Package: {packageId}
-        </span>
-        <ConnectButton />
-      </div>
-      {connected && (
-        <p className="w-full text-xs text-green-300">Wallet connected • You can issue and manage credentials</p>
-      )}
-    </div>
+    </header>
   );
 }

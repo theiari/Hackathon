@@ -6,6 +6,7 @@ export type TransactionArg =
   | { kind: "object"; object_id: string }
   | { kind: "pure_id"; value: string }
   | { kind: "pure_bytes"; value: number[] }
+  | { kind: "pure_bcs_bytes"; value: number[] }
   | { kind: "pure_string"; value: string }
   | { kind: "pure_string_vector"; value: string[] }
   | { kind: "pure_u64"; value: number }
@@ -125,6 +126,11 @@ export interface TemplateField {
   field_type: number;
   required: boolean;
   description: string;
+  min_length?: number;
+  max_length?: number;
+  min_value?: number;
+  max_value?: number;
+  pattern_hint?: string;
 }
 
 export interface TemplateFieldsResponse {
@@ -289,3 +295,96 @@ export async function fetchExplorer(params: {
   if (!response.ok) throw new Error(await response.text());
   return (await response.json()) as ExplorerResponse;
 }
+
+// === AA (Account Abstraction) types and functions ===
+
+export interface CreateAaAccountIntentRequest {
+  public_keys_hex: string[];
+  threshold: number;
+  labels: string[];
+  package_metadata_id: string;
+}
+
+export interface AaSigningRequest {
+  tx_bytes_b64: string;
+  aa_account_id: string;
+  threshold: number;
+  signer_count: number;
+  action_description: string;
+}
+
+export interface AaGovernanceIntentRequest {
+  aa_account_id: string;
+  domain_id: string;
+  proposal_id: number;
+  template_version: number;
+}
+
+export interface AaSubmitRequest {
+  tx_bytes_b64: string;
+  signatures_hex: string[];
+}
+
+export interface AaSubmitResponse {
+  submitted: boolean;
+  digest?: string | null;
+  error?: string | null;
+  proof_bytes_b64?: string | null;
+}
+
+export async function createAaAccountIntent(
+  req: CreateAaAccountIntentRequest,
+): Promise<TransactionIntentResponse> {
+  return postJson<TransactionIntentResponse>("/api/v2/aa/create-account-intent", req);
+}
+
+export async function createAaGovernanceIntent(
+  req: AaGovernanceIntentRequest,
+): Promise<AaSigningRequest> {
+  return postJson<AaSigningRequest>("/api/v2/aa/governance-intent", req);
+}
+
+export async function submitAaTransaction(
+  req: AaSubmitRequest,
+): Promise<AaSubmitResponse> {
+  return postJson<AaSubmitResponse>("/api/v2/aa/submit", req);
+}
+
+// ── DID (IOTA Identity) ──
+
+export interface DidDocument {
+  "@context": string[];
+  id: string;
+  controller?: string;
+  verificationMethod: Array<{
+    id: string;
+    type: string;
+    controller: string;
+    publicKeyMultibase?: string;
+  }>;
+  authentication: string[];
+  assertionMethod: string[];
+  service: Array<{
+    id: string;
+    type: string;
+    serviceEndpoint: string;
+  }>;
+  created?: string;
+  updated?: string;
+}
+
+export interface DidCreateRequest {
+  domain_object_id: string;
+  controller_address: string;
+  domain_name: string;
+}
+
+export function createDid(req: DidCreateRequest) {
+  return postJson<DidDocument>("/api/v1/did/create", req);
+}
+
+export function resolveDid(didId: string) {
+  return getJson<DidDocument>(`/api/v1/did/resolve/${encodeURIComponent(didId)}`);
+}
+
+export { API_BASE };

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { QrCode } from "lucide-react";
 import { fetchExplorer, type ExplorerCredentialItem } from "../notarizationApi";
 import { StatusBadge } from "./StatusBadge";
+import { QrModal } from "./QrModal";
 
 const TAG_CATEGORIES = [
   { label: "All", value: "" },
@@ -29,15 +31,17 @@ function formatDate(value?: string | null) {
 function ExplorerCard({
   item,
   onVerify,
+  onQr,
 }: {
   item: ExplorerCredentialItem;
   onVerify: () => void;
+  onQr: () => void;
 }) {
   const [copied, setCopied] = useState(false);
 
   return (
     <div
-      className={`rounded-xl border border-gray-800 bg-gray-900 p-4 ${item.revoked ? "border-l-4 border-l-red-700" : ""} ${item.status === "expired" ? "opacity-60 grayscale" : ""}`}
+      className={`min-w-0 overflow-hidden rounded-xl border border-gray-800/60 bg-gray-900/60 p-4 ${item.revoked ? "border-l-4 border-l-red-700" : ""} ${item.status === "expired" ? "opacity-60 grayscale" : ""}`}
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-semibold text-gray-100">{item.credential_type || "Credential"}</p>
@@ -58,7 +62,7 @@ function ExplorerCard({
 
       <p className="mt-3 text-xs text-gray-400">Issued: {formatDate(item.issued_at)} | Expires: {item.expiry_iso ? formatDate(item.expiry_iso) : "Never"}</p>
       <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
-        <span>Domain: {truncateId(item.domain_id)}</span>
+        <span className="truncate">Domain: {truncateId(item.domain_id)}</span>
         {item.domain_id && (
           <button
             className="rounded border border-gray-700 px-2 py-0.5 text-[11px] text-gray-300"
@@ -73,9 +77,12 @@ function ExplorerCard({
         )}
       </div>
 
-      <div className="mt-3">
+      <div className="mt-3 flex gap-2">
         <button className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white" onClick={onVerify}>
           View & Verify →
+        </button>
+        <button className="flex items-center gap-1 rounded-lg border border-gray-700/50 px-3 py-2 text-xs text-gray-300 transition-colors hover:text-white" onClick={onQr}>
+          <QrCode className="h-3 w-3" /> QR
         </button>
       </div>
     </div>
@@ -93,6 +100,7 @@ export function CredentialExplorer({ onNavigateToVerify }: { onNavigateToVerify:
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [truncated, setTruncated] = useState(false);
+  const [qrUrl, setQrUrl] = useState("");
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedDomainFilter(domainFilter), 400);
@@ -142,7 +150,7 @@ export function CredentialExplorer({ onNavigateToVerify }: { onNavigateToVerify:
   );
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 shadow-md">
+    <div className="min-w-0 overflow-hidden rounded-xl border border-gray-800/60 bg-gray-900/60 p-6 shadow-md">
       <h3 className="text-xl font-semibold text-white">🔍 Credential Explorer</h3>
       <p className="mt-1 text-sm text-gray-400">{subtitle}</p>
 
@@ -194,9 +202,9 @@ export function CredentialExplorer({ onNavigateToVerify }: { onNavigateToVerify:
 
       {!loading && !error && results.length > 0 && (
         <>
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
             {results.map((item) => (
-              <ExplorerCard key={item.record_id} item={item} onVerify={() => onNavigateToVerify(item.record_id)} />
+              <ExplorerCard key={item.record_id} item={item} onVerify={() => onNavigateToVerify(item.record_id)} onQr={() => setQrUrl(`${window.location.origin}?verify=${encodeURIComponent(item.record_id)}`)} />
             ))}
           </div>
           {truncated && (
@@ -204,6 +212,7 @@ export function CredentialExplorer({ onNavigateToVerify }: { onNavigateToVerify:
           )}
         </>
       )}
+      {qrUrl && <QrModal url={qrUrl} title="Verify Credential" onClose={() => setQrUrl("")} />}
     </div>
   );
 }

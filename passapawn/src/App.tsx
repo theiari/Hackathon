@@ -1,8 +1,8 @@
 import { useCurrentAccount } from "@iota/dapp-kit";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Home, FilePlus, Search, Wallet, ShieldCheck, Settings } from "lucide-react";
 import { CredentialExplorer } from "./components/CredentialExplorer";
 import { DomainPanel } from "./components/DomainPanel";
-import { GettingStarted } from "./components/GettingStarted";
 import { HolderView } from "./components/HolderView";
 import { IssuerPanel } from "./components/IssuerPanel";
 import { IssuerDashboard } from "./components/IssuerDashboard";
@@ -17,13 +17,23 @@ import { getCompletedSteps, markStepCompleted, type FlowStep } from "./flowState
 import { DEFAULT_NETWORK, useNetworkVariable } from "./networkConfig";
 
 const TABS = [
-  { key: "home", label: "Home" },
-  { key: "issue", label: "Issue" },
-  { key: "explore", label: "Explore 🔍" },
-  { key: "holder", label: "My Credentials" },
-  { key: "verify", label: "Verify" },
-  { key: "admin", label: "Admin" },
+  { key: "home", label: "Home", icon: Home },
+  { key: "issue", label: "Issue", icon: FilePlus },
+  { key: "explore", label: "Explore", icon: Search },
+  { key: "holder", label: "My Credentials", icon: Wallet },
+  { key: "verify", label: "Verify", icon: ShieldCheck },
+  { key: "admin", label: "Admin", icon: Settings },
 ] as const;
+
+function ConnectPrompt() {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-gray-700/50 bg-gray-900/60 px-8 py-12 text-center">
+      <Wallet className="h-10 w-10 text-gray-500" />
+      <p className="text-lg font-medium text-gray-300">Connect your wallet to continue</p>
+      <p className="text-sm text-gray-500">Use the connect button in the top-right corner.</p>
+    </div>
+  );
+}
 
 function App() {
   const account = useCurrentAccount();
@@ -34,12 +44,15 @@ function App() {
   const [presentToken, setPresentToken] = useState("");
   const [history, setHistory] = useState<VerifyTimelineEntry[]>([]);
   const [showPolicyAdmin, setShowPolicyAdmin] = useState(false);
-  const [completedSteps, setCompletedSteps] = useState(() => getCompletedSteps());
+  const [, setCompletedSteps] = useState(() => getCompletedSteps(account?.address));
 
-  const navigateToTab = (tab: "issue" | "holder" | "verify") => setActiveTab(tab);
+  useEffect(() => {
+    setCompletedSteps(getCompletedSteps(account?.address));
+  }, [account?.address]);
+
   const completeStep = useCallback((step: FlowStep) => {
-    setCompletedSteps(markStepCompleted(step));
-  }, []);
+    setCompletedSteps(markStepCompleted(step, account?.address));
+  }, [account?.address]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -51,10 +64,21 @@ function App() {
     }
 
     const verifyFromUrl = params.get("verify")?.trim() ?? "";
-    if (!verifyFromUrl) return;
-    setActiveTab("verify");
-    setPrefillVerifyId(verifyFromUrl);
-    setAutoTrigger((value) => value + 1);
+    if (verifyFromUrl) {
+      setActiveTab("verify");
+      setPrefillVerifyId(verifyFromUrl);
+      setAutoTrigger((value) => value + 1);
+      return;
+    }
+
+    const aaProposalParam = params.get("aa_proposal")?.trim() ?? "";
+    if (aaProposalParam) {
+      const [domainIdFromUrl, proposalIdStr] = aaProposalParam.split(":");
+      if (domainIdFromUrl) localStorage.setItem("passapawn:pending_aa_domain_id", domainIdFromUrl);
+      if (proposalIdStr) localStorage.setItem("passapawn:pending_aa_proposal_id", proposalIdStr);
+      setActiveTab("issue");
+      return;
+    }
   }, []);
 
   const showPublicVerifyOnHome = useMemo(
@@ -63,25 +87,32 @@ function App() {
   );
 
   return (
-    <div className="min-h-screen pb-10">
-      <WalletHeader network={DEFAULT_NETWORK} packageId={packageId} connected={Boolean(account)} />
-      {account && <GettingStarted completedSteps={completedSteps} onNavigate={navigateToTab} />}
-      <div className="sticky top-0 z-10 mx-auto mt-4 w-full max-w-6xl border-b border-gray-800 bg-gray-950/90 px-4 py-2 backdrop-blur">
-        <div className="flex w-full flex-wrap gap-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`rounded-lg border-b-2 px-4 py-2 text-sm font-semibold ${activeTab === tab.key ? "border-indigo-500 text-indigo-300" : "border-transparent bg-gray-800 text-gray-200 hover:bg-gray-700"}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-950 pb-12">
+      <WalletHeader network={DEFAULT_NETWORK} />
 
-      <div className="mx-auto mt-6 grid w-full max-w-6xl gap-6 px-4">
-        {(activeTab === "home" || showPublicVerifyOnHome) && <LandingHero connected={Boolean(account)} packageId={packageId} />}
+      {/* Tab navigation */}
+      <nav className="sticky top-0 z-20 border-b border-gray-800/60 bg-gray-950/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-4xl items-center gap-1 overflow-x-auto px-4 py-2">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${active ? "bg-indigo-600/20 text-indigo-300" : "text-gray-400 hover:bg-gray-800/60 hover:text-gray-200"}`}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Main content */}
+      <main className="mx-auto mt-6 grid max-w-4xl gap-6 px-4">
+        {(activeTab === "home" || showPublicVerifyOnHome) && <LandingHero connected={Boolean(account)} onNavigate={setActiveTab} />}
 
         {showPublicVerifyOnHome && (
           <VerifierPanel
@@ -110,11 +141,7 @@ function App() {
           </>
         )}
 
-        {activeTab === "issue" && !account && (
-          <div className="rounded-xl border border-gray-700 bg-gray-900 p-6 text-center text-gray-300">
-            Connect your IOTA wallet to continue.
-          </div>
-        )}
+        {activeTab === "issue" && !account && <ConnectPrompt />}
 
         {activeTab === "holder" && account && (
           <HolderView
@@ -130,11 +157,7 @@ function App() {
           />
         )}
 
-        {activeTab === "holder" && !account && (
-          <div className="rounded-xl border border-gray-700 bg-gray-900 p-6 text-center text-gray-300">
-            Connect your IOTA wallet to continue.
-          </div>
-        )}
+        {activeTab === "holder" && !account && <ConnectPrompt />}
 
         {activeTab === "explore" && (
           <CredentialExplorer
@@ -167,24 +190,26 @@ function App() {
 
         {activeTab === "admin" && account && (
           <>
-            <div className="flex items-center gap-3">
-              <button className="rounded-lg border border-gray-600 px-3 py-2 text-xs" onClick={() => setShowPolicyAdmin(false)}>
-                Onboarding Admin
+            <div className="flex items-center gap-2 rounded-xl border border-gray-800/60 bg-gray-900/50 p-1">
+              <button
+                className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${!showPolicyAdmin ? "bg-indigo-600/20 text-indigo-300" : "text-gray-400 hover:text-gray-200"}`}
+                onClick={() => setShowPolicyAdmin(false)}
+              >
+                Onboarding
               </button>
-              <button className="rounded-lg border border-gray-600 px-3 py-2 text-xs" onClick={() => setShowPolicyAdmin(true)}>
-                Policy Admin
+              <button
+                className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${showPolicyAdmin ? "bg-indigo-600/20 text-indigo-300" : "text-gray-400 hover:text-gray-200"}`}
+                onClick={() => setShowPolicyAdmin(true)}
+              >
+                Policy
               </button>
             </div>
             {showPolicyAdmin ? <PolicyAdminPanel /> : <OnboardingAdminPanel />}
           </>
         )}
 
-        {activeTab === "admin" && !account && (
-          <div className="rounded-xl border border-gray-700 bg-gray-900 p-6 text-center text-gray-300">
-            Connect your IOTA wallet to continue.
-          </div>
-        )}
-      </div>
+        {activeTab === "admin" && !account && <ConnectPrompt />}
+      </main>
     </div>
   );
 }

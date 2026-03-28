@@ -86,6 +86,21 @@ fn parse_issuance_metadata(state_metadata: &str) -> anyhow::Result<(String, u64)
     Ok((domain_id, expiry_unix))
 }
 
+fn parse_tags_from_metadata(state_metadata: &str) -> Vec<String> {
+    let parsed: serde_json::Value = match serde_json::from_str(state_metadata) {
+        Ok(v) => v,
+        Err(_) => return vec![],
+    };
+    let raw = parsed
+        .pointer("/public_fields/tags")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    raw.split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
 fn derive_pseudo_notarization_id(state_bytes: &[u8], state_metadata: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(state_bytes);
@@ -134,6 +149,7 @@ impl NotarizationService {
         let state_bytes = state_bytes_from_payload(data, payload_strategy);
         let (domain_id, expiry_unix) = parse_issuance_metadata(&state_metadata)?;
         let notarization_id = derive_pseudo_notarization_id(&state_bytes, &state_metadata);
+        let tags = parse_tags_from_metadata(&state_metadata);
 
         Ok(TransactionIntent {
             package_id: self.package_id.clone(),
@@ -151,6 +167,9 @@ impl NotarizationService {
                 },
                 TransactionArg::PureU64 { value: expiry_unix },
                 TransactionArg::PureBool { value: false },
+                TransactionArg::PureStringVector {
+                    value: tags,
+                },
             ],
         })
     }
@@ -166,6 +185,7 @@ impl NotarizationService {
         let state_bytes = state_bytes_from_payload(data, payload_strategy);
         let (domain_id, expiry_unix) = parse_issuance_metadata(&state_metadata)?;
         let notarization_id = derive_pseudo_notarization_id(&state_bytes, &state_metadata);
+        let tags = parse_tags_from_metadata(&state_metadata);
 
         Ok(TransactionIntent {
             package_id: self.package_id.clone(),
@@ -183,6 +203,9 @@ impl NotarizationService {
                 },
                 TransactionArg::PureU64 { value: expiry_unix },
                 TransactionArg::PureBool { value: true },
+                TransactionArg::PureStringVector {
+                    value: tags,
+                },
             ],
         })
     }

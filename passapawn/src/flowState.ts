@@ -9,12 +9,17 @@ const KEYS = {
   lastNotarizationId: `${NS}last_notarization_id`,
   lastDomainCapId: `${NS}last_domain_cap_id`,
   adminApiKey: `${NS}admin_api_key`,
+  aaAccountId: `${NS}aa_account_id`,
+  aaThreshold: `${NS}aa_threshold`,
+  aaSignerCount: `${NS}aa_signer_count`,
+  packageMetadataId: `${NS}package_metadata_id`,
 };
 
 export const flowKeys = KEYS;
 
-export function getCompletedSteps(): Set<number> {
-  const raw = localStorage.getItem(KEYS.completedSteps);
+export function getCompletedSteps(address?: string): Set<number> {
+  const key = address ? `${KEYS.completedSteps}:${address}` : KEYS.completedSteps;
+  const raw = localStorage.getItem(key);
   if (!raw) return new Set<number>();
   try {
     const parsed = JSON.parse(raw) as number[];
@@ -24,10 +29,11 @@ export function getCompletedSteps(): Set<number> {
   }
 }
 
-export function markStepCompleted(step: FlowStep): Set<number> {
-  const next = getCompletedSteps();
+export function markStepCompleted(step: FlowStep, address?: string): Set<number> {
+  const key = address ? `${KEYS.completedSteps}:${address}` : KEYS.completedSteps;
+  const next = getCompletedSteps(address);
   next.add(step);
-  localStorage.setItem(KEYS.completedSteps, JSON.stringify(Array.from(next)));
+  localStorage.setItem(key, JSON.stringify(Array.from(next)));
   return next;
 }
 

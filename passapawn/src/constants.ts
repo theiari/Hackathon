@@ -1,6 +1,5 @@
-// ⚠ After Move v5b changes, redeploy and update this ID:
-// cd move/counter && iota client publish --gas-budget 100000000
-export const DEVNET_PACKAGE_ID = "0xbc6b8d122ab9b277e9ba4d1173bc62fdbdd07f2f4935f6f55327f983833b9afb";
+export const DEVNET_PACKAGE_ID = "0x52bcff89c205d8f8b0ec62294f1baf7d6c9f52cce6437849d68d8557b6f7ed44";
+export const PACKAGE_METADATA_ID = "0x4231e7cab5f8e276c0d2bb61c72bf2ab59ebf2903f58a38aaf885a6cf52678dd"; // TODO: fill after redeploy — find in tx effects (type contains "PackageMetadataV1")
 export const TESTNET_PACKAGE_ID = "0xTODO";
 export const MAINNET_PACKAGE_ID = "0xTODO";
 export type NotarizationMethod = "locked" | "dynamic";
