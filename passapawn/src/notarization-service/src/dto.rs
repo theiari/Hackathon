@@ -53,6 +53,38 @@ pub struct CreateCredentialRecordIntentRequest {
     pub meta: String,
     pub expiry_unix: u64,
     pub transferable: bool,
+    pub tags: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ExplorerQuery {
+    pub tag: Option<String>,
+    pub domain_id: Option<String>,
+    pub credential_type: Option<String>,
+    pub limit: Option<usize>,
+    pub cursor: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ExplorerCredentialItem {
+    pub record_id: String,
+    pub domain_id: Option<String>,
+    pub tags: Vec<String>,
+    pub credential_type: Option<String>,
+    pub issued_at: Option<String>,
+    pub expiry_iso: Option<String>,
+    pub revoked: bool,
+    pub transferable: bool,
+    pub status: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ExplorerResponse {
+    pub items: Vec<ExplorerCredentialItem>,
+    pub total: usize,
+    pub truncated: bool,
+    pub next_cursor: Option<String>,
+    pub fetched_at: String,
 }
 
 #[derive(Debug, Deserialize)]

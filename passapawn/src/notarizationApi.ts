@@ -7,6 +7,7 @@ export type TransactionArg =
   | { kind: "pure_id"; value: string }
   | { kind: "pure_bytes"; value: number[] }
   | { kind: "pure_string"; value: string }
+  | { kind: "pure_string_vector"; value: string[] }
   | { kind: "pure_u64"; value: number }
   | { kind: "pure_bool"; value: boolean };
 
@@ -66,6 +67,27 @@ export interface CreateCredentialRecordPayload {
   meta: string;
   expiry_unix: number;
   transferable: boolean;
+  tags: string[];
+}
+
+export interface ExplorerCredentialItem {
+  record_id: string;
+  domain_id: string | null;
+  tags: string[];
+  credential_type: string | null;
+  issued_at: string | null;
+  expiry_iso: string | null;
+  revoked: boolean;
+  transferable: boolean;
+  status: "valid" | "expired" | "revoked_on_chain";
+}
+
+export interface ExplorerResponse {
+  items: ExplorerCredentialItem[];
+  total: number;
+  truncated: boolean;
+  next_cursor: string | null;
+  fetched_at: string;
 }
 
 export interface PresentationResponse {
@@ -248,4 +270,22 @@ export function fetchIssuerCredentials(domainId: string, apiKey: string) {
     }
     return response.json() as Promise<IssuerCredentialsResponse>;
   });
+}
+
+export async function fetchExplorer(params: {
+  tag?: string;
+  domain_id?: string;
+  credential_type?: string;
+  limit?: number;
+  cursor?: string;
+}): Promise<ExplorerResponse> {
+  const qs = new URLSearchParams();
+  if (params.tag) qs.set("tag", params.tag);
+  if (params.domain_id) qs.set("domain_id", params.domain_id);
+  if (params.credential_type) qs.set("credential_type", params.credential_type);
+  if (params.limit) qs.set("limit", String(params.limit));
+  if (params.cursor) qs.set("cursor", params.cursor);
+  const response = await fetch(`${API_BASE}/api/v1/explorer/credentials?${qs.toString()}`);
+  if (!response.ok) throw new Error(await response.text());
+  return (await response.json()) as ExplorerResponse;
 }

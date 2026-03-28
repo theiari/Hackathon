@@ -13,6 +13,8 @@ import { getFlowValue, setFlowValue } from "../flowState";
 import { FieldHelp } from "./FieldHelp";
 import { TxButton, type TxState } from "./TxButton";
 
+const PRESET_TAGS = ["education", "work", "language", "health", "certificate", "veterinary", "government"];
+
 interface StructuredValue {
   value: string;
   privacy: "private" | "public";
@@ -126,7 +128,13 @@ export function IssuerPanel({ onIssued }: { onIssued?: () => void }) {
     metadata: string;
     expiryUnix: number;
     transferable: boolean;
+    tags: string[];
   } | null>(null);
+  const [selectedPresetTags, setSelectedPresetTags] = useState<string[]>([]);
+  const [customTagInput, setCustomTagInput] = useState("");
+  const [customTags, setCustomTags] = useState<string[]>([]);
+
+  const selectedTags = useMemo(() => [...selectedPresetTags, ...customTags].slice(0, 6), [selectedPresetTags, customTags]);
 
   const pushDebug = (step: string, details?: unknown) => {
     const entry: DebugEntry = {
@@ -146,9 +154,10 @@ export function IssuerPanel({ onIssued }: { onIssued?: () => void }) {
         if (arg.kind === "object") return tx.object(arg.object_id);
         if (arg.kind === "pure_u64") return tx.pure.u64(BigInt(arg.value));
         if (arg.kind === "pure_bool") return tx.pure.bool(arg.value);
-        if (arg.kind === "pure_id") return tx.pure.id(arg.value);
+        if (arg.kind === "pure_id") return tx.pure.address(arg.value);
         if (arg.kind === "pure_bytes") return tx.pure.vector("u8", arg.value.map((byte) => Number(byte)));
         if (arg.kind === "pure_string") return tx.pure.string(arg.value);
+        if (arg.kind === "pure_string_vector") return tx.pure.vector("string", arg.value);
         throw new Error(`Unsupported transaction argument kind: ${String((arg as { kind?: string }).kind)}`);
       }),
     });
@@ -205,6 +214,10 @@ export function IssuerPanel({ onIssued }: { onIssued?: () => void }) {
         }
       }
 
+      if (selectedTags.length > 0) {
+        publicFields.tags = selectedTags.join(",");
+      }
+
       const metadata = JSON.stringify({
         schema_version: 1,
         credential_type: templateType,
@@ -223,6 +236,7 @@ export function IssuerPanel({ onIssued }: { onIssued?: () => void }) {
         public_fields_count: Object.keys(publicFields).length,
         hashed_fields_count: Object.keys(hashedFields).length,
         expiry_unix: expiryUnix,
+        tags_count: selectedTags.length,
       });
 
       const dynamicPayload = {
@@ -317,6 +331,7 @@ export function IssuerPanel({ onIssued }: { onIssued?: () => void }) {
                   metadata,
                   expiryUnix,
                   transferable,
+                  tags: selectedTags,
                 });
               }
               if (created?.objectType.includes("AssetRecord")) {
@@ -366,6 +381,7 @@ export function IssuerPanel({ onIssued }: { onIssued?: () => void }) {
         domain_id: domainId.trim(),
         expiry_unix: registrationIntent.expiryUnix,
         transferable: registrationIntent.transferable,
+        tags: registrationIntent.tags,
       });
 
       const intent = await createCredentialRecordIntent({
@@ -374,6 +390,7 @@ export function IssuerPanel({ onIssued }: { onIssued?: () => void }) {
         meta: registrationIntent.metadata,
         expiry_unix: registrationIntent.expiryUnix,
         transferable: registrationIntent.transferable,
+        tags: registrationIntent.tags,
       });
 
       pushDebug("record.intent_response", {
@@ -469,6 +486,72 @@ export function IssuerPanel({ onIssued }: { onIssued?: () => void }) {
           <input type="checkbox" checked={transferable} onChange={(e) => setTransferable(e.target.checked)} />
           Transferable ownership?
         </label>
+      </div>
+
+      <div className="mt-3 rounded-lg border border-gray-800 p-3">
+        <p className="text-xs font-semibold text-gray-200">Tags</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {PRESET_TAGS.map((tag) => {
+            const active = selectedPresetTags.includes(tag);
+            return (
+              <button
+                key={tag}
+                className={`rounded-full px-3 py-1 text-xs ${active ? "bg-indigo-700 text-white" : "bg-gray-800 text-gray-300"}`}
+                onClick={() => {
+                  setSelectedPresetTags((prev) => {
+                    if (prev.includes(tag)) {
+                      return prev.filter((item) => item !== tag);
+                    }
+                    if (prev.length + customTags.length >= 6) {
+                      return prev;
+                    }
+                    return [...prev, tag];
+                  });
+                }}
+              >
+                {tag}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <input
+            className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-xs text-gray-100"
+            placeholder="Custom tag"
+            maxLength={20}
+            value={customTagInput}
+            onChange={(e) => setCustomTagInput(e.target.value)}
+          />
+          <button
+            className="rounded border border-gray-700 px-3 py-2 text-xs text-gray-200"
+            onClick={() => {
+              const normalized = customTagInput.trim().toLowerCase();
+              if (!normalized) return;
+              if (customTags.length >= 3) return;
+              if (selectedPresetTags.includes(normalized) || customTags.includes(normalized)) return;
+              if (selectedPresetTags.length + customTags.length >= 6) return;
+              setCustomTags((prev) => [...prev, normalized]);
+              setCustomTagInput("");
+            }}
+          >
+            Add custom tag
+          </button>
+          <p className="text-[11px] text-gray-500">Max 3 custom tags, max 6 tags total</p>
+        </div>
+
+        {customTags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {customTags.map((tag) => (
+              <span key={tag} className="rounded-full border border-gray-700 bg-gray-800 px-3 py-1 text-xs text-gray-200">
+                {tag}
+                <button className="ml-2 text-gray-400" onClick={() => setCustomTags((prev) => prev.filter((item) => item !== tag))}>
+                  x
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {templateFields.length > 0 && (

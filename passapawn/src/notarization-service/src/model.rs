@@ -65,6 +65,9 @@ pub enum TransactionArg {
     PureString {
         value: String,
     },
+    PureStringVector {
+        value: Vec<String>,
+    },
     PureU64 {
         value: u64,
     },

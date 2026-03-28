@@ -1,4 +1,4 @@
-import { getCompletedSteps, getCurrentStep } from "../flowState";
+import { getCurrentStep } from "../flowState";
 
 const STEPS = [
   { id: 1, icon: "🏛", label: "Create Domain", tab: "issue" },
@@ -16,8 +16,14 @@ const HINTS: Record<number, string> = {
   5: "Paste a notarization ID to verify it, then share the link.",
 };
 
-export function GettingStarted({ onNavigate }: { onNavigate: (tab: "issue" | "holder" | "verify") => void }) {
-  const completed = getCompletedSteps();
+export function GettingStarted({
+  completedSteps,
+  onNavigate,
+}: {
+  completedSteps: Set<number>;
+  onNavigate: (tab: "issue" | "holder" | "verify") => void;
+}) {
+  const completed = completedSteps;
   const current = getCurrentStep(completed);
 
   return (

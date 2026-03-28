@@ -27,10 +27,11 @@ use axum::{
     Json,
 };
 use base64::Engine;
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use chrono::Utc;
-use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha256, Sha512};
 use serde::Serialize;
 use tokio::time::sleep;
 
@@ -38,6 +39,7 @@ use crate::client::NotarizationService;
 use crate::config::NotarizationConfig;
 use crate::dto::{
     CreateCredentialRecordIntentRequest, EmergencyRollbackRequest, LaunchModeRequest,
+    ExplorerCredentialItem, ExplorerQuery, ExplorerResponse,
     OnboardingActivateRequest, OnboardingRequestCreate, OnboardingReviewRequest,
     OpenDisputeRequest, PolicyActivateRequest, PolicyDraftRequest, PolicyRollbackRequest,
     PresentationToken, ResolveDisputeRequest, RevokeCredentialRequest, RevokeOnchainIntentRequest,
@@ -271,6 +273,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/notarizations/:id/verify", post(verify_notarization))
         .route("/api/v1/public/verify/:id", get(verify_notarization_public))
         .route("/api/v1/public/present", get(public_present))
+        .route("/api/v1/explorer/credentials", get(explorer_credentials_v1))
         .route("/api/v1/holder/:address/credentials", get(holder_credentials_v1))
         .route("/api/v1/templates/:template_id/fields", get(get_template_fields_v1))
         .route("/api/v1/notarizations/locked", post(create_locked))
@@ -538,6 +541,471 @@ async fn get_template_fields_v1(
         credential_type,
         fields,
     }))
+}
+
+#[derive(Debug)]
+struct ExplorerObjectPage {
+    ids: Vec<String>,
+    next_cursor: Option<String>,
+}
+
+async fn explorer_credentials_v1(
+    State(state): State<AppState>,
+    Query(query): Query<ExplorerQuery>,
+) -> Result<Json<ExplorerResponse>, ApiError> {
+    let fetched_at = Utc::now().to_rfc3339();
+    let requested_limit = query.limit.unwrap_or(20).clamp(1, 50);
+
+    let page = fetch_asset_record_object_ids(&state, query.cursor.as_deref()).await?;
+    let now_secs = Utc::now().timestamp().max(0) as u64;
+
+    let tag_filter = query.tag.as_deref().map(str::trim).filter(|v| !v.is_empty());
+    let domain_filter = query
+        .domain_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty());
+    let type_filter = query
+        .credential_type
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(str::to_lowercase);
+
+    let mut filtered = Vec::new();
+    for record_id in page.ids {
+        let content = match fetch_object_content(&state.service.node_url, &record_id).await {
+            Ok(content) => content,
+            Err(_) => continue,
+        };
+
+        let Some(item) = parse_explorer_item(&record_id, &content, now_secs) else {
+            continue;
+        };
+
+        if let Some(tag) = tag_filter {
+            if !item
+                .tags
+                .iter()
+                .any(|candidate| candidate.eq_ignore_ascii_case(tag))
+            {
+                continue;
+            }
+        }
+
+        if let Some(domain) = domain_filter {
+            if item.domain_id.as_deref() != Some(domain) {
+                continue;
+            }
+        }
+
+        if let Some(filter) = &type_filter {
+            let candidate = item
+                .credential_type
+                .as_deref()
+                .unwrap_or_default()
+                .to_lowercase();
+            if !candidate.contains(filter) {
+                continue;
+            }
+        }
+
+        filtered.push(item);
+    }
+
+    let total = filtered.len();
+    let truncated = total > requested_limit;
+    if truncated {
+        filtered.truncate(requested_limit);
+    }
+
+    let next_cursor = if truncated {
+        filtered.last().map(|item| item.record_id.clone())
+    } else {
+        page.next_cursor
+    };
+
+    Ok(Json(ExplorerResponse {
+        items: filtered,
+        total,
+        truncated,
+        next_cursor,
+        fetched_at,
+    }))
+}
+
+async fn fetch_asset_record_object_ids(
+    state: &AppState,
+    cursor: Option<&str>,
+) -> Result<ExplorerObjectPage, ApiError> {
+    let wanted_type = format!("{}::asset_record::AssetRecord", state.service.package_id);
+    let payload = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "iota_queryObjectsV2",
+        "params": [
+            { "StructType": wanted_type },
+            cursor,
+            50,
+            false
+        ]
+    });
+
+    let response = reqwest::Client::new()
+        .post(&state.service.node_url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|err| ApiError::Internal(format!("explorer query failed: {err}")))?;
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|err| ApiError::Internal(format!("invalid explorer query response: {err}")))?;
+
+    if let Some(rpc_error) = body.get("error") {
+        let code = rpc_error
+            .get("code")
+            .and_then(|value| value.as_i64())
+            .unwrap_or_default();
+        if code == -32601 {
+            return fetch_asset_record_object_ids_fallback_owned(state, cursor).await;
+        }
+        return Err(ApiError::Internal(format!(
+            "explorer query RPC error: {rpc_error}"
+        )));
+    }
+
+    let data = body
+        .get("result")
+        .and_then(|value| value.get("data"))
+        .and_then(|value| value.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let mut ids = Vec::new();
+    for entry in data {
+        let candidate = entry.get("data").unwrap_or(&entry);
+        let object_id = candidate
+            .get("objectId")
+            .or_else(|| candidate.get("object_id"))
+            .and_then(|value| value.as_str())
+            .unwrap_or_default();
+        if !object_id.is_empty() {
+            ids.push(object_id.to_string());
+        }
+    }
+
+    let next_cursor = body
+        .get("result")
+        .and_then(|value| value.get("nextCursor").or_else(|| value.get("next_cursor")))
+        .and_then(|value| value.as_str())
+        .map(str::to_string);
+
+    Ok(ExplorerObjectPage { ids, next_cursor })
+}
+
+async fn fetch_asset_record_object_ids_fallback_owned(
+    state: &AppState,
+    cursor: Option<&str>,
+) -> Result<ExplorerObjectPage, ApiError> {
+    // TODO(v6a-explorer): fallback uses owned-object scanning when iota_queryObjectsV2 is unavailable.
+    let policy = state.service.trust_registry.get_policy();
+    let owner = policy
+        .trusted_issuers
+        .iter()
+        .find(|value| value.trim().starts_with("0x"))
+        .map(|value| value.trim().to_string());
+
+    let Some(owner) = owner else {
+        return Ok(ExplorerObjectPage {
+            ids: Vec::new(),
+            next_cursor: None,
+        });
+    };
+
+    let wanted_type = format!("{}::asset_record::AssetRecord", state.service.package_id);
+    let query = serde_json::json!({
+        "filter": { "StructType": wanted_type },
+        "options": { "showType": true }
+    });
+    let mut last_method_not_found: Option<String> = None;
+
+    for method in ["iotax_getOwnedObjects", "iota_getOwnedObjects", "suix_getOwnedObjects"] {
+        let payload = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": method,
+            "params": [owner, query, cursor, 50]
+        });
+
+        let response = reqwest::Client::new()
+            .post(&state.service.node_url)
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|err| ApiError::Internal(format!("explorer fallback failed: {err}")))?;
+        let body: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|err| ApiError::Internal(format!("invalid explorer fallback response: {err}")))?;
+
+        if let Some(rpc_error) = body.get("error") {
+            let code = rpc_error
+                .get("code")
+                .and_then(|value| value.as_i64())
+                .unwrap_or_default();
+            if code == -32601 {
+                last_method_not_found = Some(format!("{method}: {rpc_error}"));
+                continue;
+            }
+            return Err(ApiError::Internal(format!(
+                "explorer fallback RPC error via {method}: {rpc_error}"
+            )));
+        }
+
+        let entries = body
+            .get("result")
+            .and_then(|result| result.get("data").or_else(|| result.get("objects")))
+            .and_then(|value| value.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        let mut ids = Vec::new();
+        for entry in entries {
+            let candidate = entry.get("data").unwrap_or(&entry);
+            let object_type = candidate
+                .get("type")
+                .or_else(|| candidate.get("objectType"))
+                .and_then(|value| value.as_str())
+                .unwrap_or_default();
+            if !object_type.contains("AssetRecord") {
+                continue;
+            }
+            if let Some(object_id) = candidate
+                .get("objectId")
+                .or_else(|| candidate.get("object_id"))
+                .and_then(|value| value.as_str())
+            {
+                ids.push(object_id.to_string());
+            }
+        }
+
+        let next_cursor = body
+            .get("result")
+            .and_then(|value| value.get("nextCursor").or_else(|| value.get("next_cursor")))
+            .and_then(|value| value.as_str())
+            .map(str::to_string);
+
+        return Ok(ExplorerObjectPage { ids, next_cursor });
+    }
+
+    Err(ApiError::Internal(format!(
+        "explorer fallback failed: no supported getOwnedObjects method ({})",
+        last_method_not_found.unwrap_or_else(|| "no details".to_string())
+    )))
+}
+
+async fn fetch_object_content(node_url: &str, object_id: &str) -> anyhow::Result<serde_json::Value> {
+    let payload = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "iota_getObject",
+        "params": [object_id, {"showContent": true, "showType": true}]
+    });
+
+    let response = reqwest::Client::new().post(node_url).json(&payload).send().await?;
+    let body: serde_json::Value = response.json().await?;
+    if let Some(rpc_error) = body.get("error") {
+        anyhow::bail!("object fetch failed: {rpc_error}");
+    }
+
+    let content = body
+        .get("result")
+        .and_then(|result| result.get("data"))
+        .and_then(|data| data.get("content"))
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    Ok(content)
+}
+
+fn parse_explorer_item(record_id: &str, content: &serde_json::Value, now_secs: u64) -> Option<ExplorerCredentialItem> {
+    let domain_id = extract_field_value(content, &["domain_id", "domainId", "domain"]);
+    let mut tags = extract_string_array_field(content, &["tags"]);
+    let expiry_unix = extract_u64_field(content, &["expiry_unix", "expiryUnix"]).unwrap_or(0);
+    let revoked = extract_bool_field(content, &["revoked"]).unwrap_or(false);
+    let transferable = extract_bool_field(content, &["transferable"]).unwrap_or(false);
+
+    let meta_bytes = extract_u8_array_field(content, &["asset_meta", "assetMeta", "state_metadata", "metadata"]);
+    let metadata = meta_bytes
+        .as_ref()
+        .and_then(|bytes| std::str::from_utf8(bytes).ok())
+        .and_then(|json| serde_json::from_str::<serde_json::Value>(json).ok());
+
+    let credential_type = metadata
+        .as_ref()
+        .and_then(|value| extract_field_value(value, &["credential_type", "credentialType"]));
+    let issued_at = metadata
+        .as_ref()
+        .and_then(|value| extract_field_value(value, &["issued_at", "issuedAt"]));
+    let expiry_iso = metadata
+        .as_ref()
+        .and_then(|value| extract_field_value(value, &["expiry_iso", "expiryIso"]));
+
+    if tags.is_empty() {
+        if let Some(raw_tags) = metadata
+            .as_ref()
+            .and_then(|value| extract_field_value(value, &["tags"]))
+            .or_else(|| {
+                metadata
+                    .as_ref()
+                    .and_then(|value| value.get("public_fields"))
+                    .and_then(|fields| fields.get("tags"))
+                    .and_then(|value| value.as_str())
+                    .map(str::to_string)
+            })
+        {
+            tags = raw_tags
+                .split(',')
+                .map(|part| part.trim().to_string())
+                .filter(|part| !part.is_empty())
+                .collect();
+        }
+    }
+
+    let status = if revoked {
+        "revoked_on_chain".to_string()
+    } else if expiry_unix > 0 && now_secs > expiry_unix {
+        "expired".to_string()
+    } else {
+        "valid".to_string()
+    };
+
+    Some(ExplorerCredentialItem {
+        record_id: record_id.to_string(),
+        domain_id,
+        tags,
+        credential_type,
+        issued_at,
+        expiry_iso,
+        revoked,
+        transferable,
+        status,
+    })
+}
+
+fn extract_by_keys(value: &serde_json::Value, keys: &[&str]) -> Option<serde_json::Value> {
+    match value {
+        serde_json::Value::Object(map) => {
+            for key in keys {
+                if let Some(found) = map.get(*key) {
+                    return Some(found.clone());
+                }
+            }
+            map.values().find_map(|child| extract_by_keys(child, keys))
+        }
+        serde_json::Value::Array(values) => values.iter().find_map(|child| extract_by_keys(child, keys)),
+        _ => None,
+    }
+}
+
+fn extract_bool_field(content: &serde_json::Value, keys: &[&str]) -> Option<bool> {
+    let value = extract_by_keys(content, keys)?;
+    match value {
+        serde_json::Value::Bool(v) => Some(v),
+        serde_json::Value::String(v) => Some(v.eq_ignore_ascii_case("true") || v == "1"),
+        serde_json::Value::Object(map) => map
+            .get("value")
+            .and_then(|nested| nested.as_bool())
+            .or_else(|| map.get("value").and_then(|nested| nested.as_str()).map(|v| v.eq_ignore_ascii_case("true") || v == "1")),
+        _ => None,
+    }
+}
+
+fn extract_u64_field(content: &serde_json::Value, keys: &[&str]) -> Option<u64> {
+    let value = extract_by_keys(content, keys)?;
+    match value {
+        serde_json::Value::Number(v) => v.as_u64(),
+        serde_json::Value::String(v) => v.parse::<u64>().ok(),
+        serde_json::Value::Object(map) => map
+            .get("value")
+            .and_then(|nested| nested.as_u64())
+            .or_else(|| map.get("value").and_then(|nested| nested.as_str()).and_then(|v| v.parse::<u64>().ok())),
+        _ => None,
+    }
+}
+
+fn extract_string_array_field(content: &serde_json::Value, keys: &[&str]) -> Vec<String> {
+    let Some(value) = extract_by_keys(content, keys) else {
+        return Vec::new();
+    };
+    collect_strings(&value)
+}
+
+fn collect_strings(value: &serde_json::Value) -> Vec<String> {
+    match value {
+        serde_json::Value::Array(values) => values
+            .iter()
+            .flat_map(collect_strings)
+            .collect::<Vec<_>>(),
+        serde_json::Value::String(v) => {
+            let trimmed = v.trim();
+            if trimmed.is_empty() {
+                Vec::new()
+            } else if trimmed.starts_with('[') && trimmed.ends_with(']') {
+                serde_json::from_str::<Vec<String>>(trimmed).unwrap_or_default()
+            } else {
+                vec![trimmed.to_string()]
+            }
+        }
+        serde_json::Value::Object(map) => {
+            if let Some(value) = map.get("value") {
+                return collect_strings(value);
+            }
+            if let Some(value) = map.get("fields") {
+                return collect_strings(value);
+            }
+            map.values().flat_map(collect_strings).collect::<Vec<_>>()
+        }
+        _ => Vec::new(),
+    }
+}
+
+fn extract_u8_array_field(content: &serde_json::Value, keys: &[&str]) -> Option<Vec<u8>> {
+    let value = extract_by_keys(content, keys)?;
+    collect_u8_array(&value)
+}
+
+fn collect_u8_array(value: &serde_json::Value) -> Option<Vec<u8>> {
+    match value {
+        serde_json::Value::Array(values) => {
+            let mut out = Vec::with_capacity(values.len());
+            for item in values {
+                let number = item.as_u64()?;
+                out.push(number as u8);
+            }
+            Some(out)
+        }
+        serde_json::Value::Object(map) => {
+            if let Some(value) = map.get("value") {
+                return collect_u8_array(value);
+            }
+            if let Some(value) = map.get("fields") {
+                return collect_u8_array(value);
+            }
+            if let Some(value) = map.get("bytes") {
+                return collect_u8_array(value);
+            }
+            None
+        }
+        serde_json::Value::String(value) => {
+            if value.starts_with('[') && value.ends_with(']') {
+                serde_json::from_str::<Vec<u8>>(value).ok()
+            } else {
+                Some(value.as_bytes().to_vec())
+            }
+        }
+        _ => None,
+    }
 }
 
 async fn issuer_credentials_v2(
@@ -819,6 +1287,20 @@ fn find_nested_array<'a>(value: &'a serde_json::Value, keys: &[&str]) -> Option<
     }
 }
 
+fn bcs_uleb128(mut n: usize) -> Vec<u8> {
+    let mut out = Vec::new();
+    loop {
+        let byte = (n & 0x7F) as u8;
+        n >>= 7;
+        if n == 0 {
+            out.push(byte);
+            break;
+        }
+        out.push(byte | 0x80);
+    }
+    out
+}
+
 fn serialize_verdict(verdict: crate::model::VerificationVerdict, request_id: &str) -> serde_json::Value {
     serde_json::json!({
         "id": verdict.id,
@@ -870,22 +1352,61 @@ async fn public_present(
         payload.credential_id, payload.holder, payload.timestamp, payload.nonce
     );
 
-    let message_bytes = base64::engine::general_purpose::STANDARD
-        .decode(payload.message_bytes.as_bytes())
-        .map_err(|_| ApiError::BadRequest("invalid message_bytes in token".to_string()))?;
+    let sig_bytes = base64::engine::general_purpose::STANDARD
+        .decode(payload.signature.trim().as_bytes())
+        .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(payload.signature.trim().as_bytes()))
+        .map_err(|_| ApiError::BadRequest("invalid signature encoding".to_string()))?;
 
-    let mut signature_valid = false;
-    let mut failure_reason: Option<String>;
-    if message_bytes != expected_message.as_bytes() {
-        failure_reason = Some("message_mismatch".to_string());
+    let raw_msg_bytes = base64::engine::general_purpose::STANDARD
+        .decode(payload.message_bytes.as_bytes())
+        .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(payload.message_bytes.as_bytes()))
+        .map_err(|_| ApiError::BadRequest("invalid message_bytes encoding".to_string()))?;
+
+    let message_match = raw_msg_bytes == expected_message.as_bytes();
+
+    let intent_prefix = [3u8, 0u8, 0u8];
+    let msg_len_prefix = bcs_uleb128(raw_msg_bytes.len());
+    let mut signed_bytes = Vec::with_capacity(intent_prefix.len() + msg_len_prefix.len() + raw_msg_bytes.len());
+    signed_bytes.extend_from_slice(&intent_prefix);
+    signed_bytes.extend_from_slice(&msg_len_prefix);
+    signed_bytes.extend_from_slice(&raw_msg_bytes);
+
+    let _ = Sha512::digest(&signed_bytes);
+
+    let (signature_valid, mut failure_reason): (bool, Option<String>) = if sig_bytes.len() < 97 {
+        (false, Some("invalid_signature_length".to_string()))
+    } else if sig_bytes[0] != 0x00 {
+        (false, Some("unsupported_signature_scheme".to_string()))
     } else {
-        // TODO(v5b): implement full IOTA personal message signature verification.
-        // The dapp-kit signature format includes scheme + signature + public key bytes.
-        // Use iota-sdk helper when available (or ed25519-dalek fallback) to verify.
-        let _ = &payload.signature;
-        signature_valid = false;
-        failure_reason = Some("signature_verification_not_implemented".to_string());
-    }
+        let raw_sig: [u8; 64] = match sig_bytes[1..65].try_into() {
+            Ok(value) => value,
+            Err(_) => {
+                return Err(ApiError::BadRequest("invalid signature bytes".to_string()));
+            }
+        };
+        let raw_pubkey: [u8; 32] = match sig_bytes[65..97].try_into() {
+            Ok(value) => value,
+            Err(_) => {
+                return Err(ApiError::BadRequest("invalid public key bytes".to_string()));
+            }
+        };
+
+        let signature = Signature::from_bytes(&raw_sig);
+        match VerifyingKey::from_bytes(&raw_pubkey) {
+            Ok(verifying_key) => {
+                if verifying_key.verify(&signed_bytes, &signature).is_ok() {
+                    if message_match {
+                        (true, None)
+                    } else {
+                        (false, Some("message_mismatch".to_string()))
+                    }
+                } else {
+                    (false, Some("signature_invalid".to_string()))
+                }
+            }
+            Err(_) => (false, Some("signature_parse_error".to_string())),
+        }
+    };
 
     let holder_owner = fetch_object_owner_address(&state.service.node_url, &payload.credential_id)
         .await
@@ -949,6 +1470,9 @@ async fn credential_record_intent_v2(
             },
             crate::model::TransactionArg::PureBool {
                 value: req.transferable,
+            },
+            crate::model::TransactionArg::PureStringVector {
+                value: req.tags,
             },
         ],
     };

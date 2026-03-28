@@ -1,3 +1,4 @@
+// v6a: tags field added. Redeploy combined with v6b AA module.
 module notarization_package_hackathon::asset_record;
 
 // PACKAGE REDEPLOYMENT REQUIRED after v5b Move changes.
@@ -6,6 +7,7 @@ module notarization_package_hackathon::asset_record;
 
 use iota_notarization::notarization::Notarization;
 use notarization_package_hackathon::credential_domain;
+use std::string::String;
 
 const E_WRONG_DOMAIN_CAP: u64 = 10;
 
@@ -17,6 +19,7 @@ public struct AssetRecord has key, store {
     expiry_unix: u64,
     revoked: bool,
     transferable: bool,
+    tags: vector<String>,
 }
 
 public struct AssetRecordCreated has copy, drop {
@@ -31,6 +34,7 @@ public entry fun create_credential_record(
     meta: vector<u8>,
     expiry_unix: u64,
     transferable: bool,
+    tags: vector<String>,
     ctx: &mut TxContext,
 ) {
     let id = object::new(ctx);
@@ -48,6 +52,7 @@ public entry fun create_credential_record(
         expiry_unix,
         revoked: false,
         transferable,
+        tags,
     };
     transfer::public_transfer(record, ctx.sender());
 }
@@ -89,6 +94,7 @@ public fun register_asset_record<D: store + drop + copy>(
         expiry_unix: 0,
         revoked: false,
         transferable: false,
+        tags: vector[],
     }
 }
 
@@ -110,4 +116,8 @@ public fun is_transferable(record: &AssetRecord): bool {
 
 public fun get_domain_id(record: &AssetRecord): ID {
     record.domain_id
+}
+
+public fun get_tags(record: &AssetRecord): &vector<String> {
+    &record.tags
 }

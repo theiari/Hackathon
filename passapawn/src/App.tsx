@@ -1,5 +1,6 @@
 import { useCurrentAccount } from "@iota/dapp-kit";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CredentialExplorer } from "./components/CredentialExplorer";
 import { DomainPanel } from "./components/DomainPanel";
 import { GettingStarted } from "./components/GettingStarted";
 import { HolderView } from "./components/HolderView";
@@ -12,12 +13,13 @@ import { PolicyAdminPanel } from "./components/PolicyAdminPanel";
 import { VerifierHistory, type VerifyTimelineEntry } from "./components/VerifierHistory";
 import { VerifierPanel } from "./components/VerifierPanel";
 import { WalletHeader } from "./components/WalletHeader";
-import { markStepCompleted } from "./flowState";
+import { getCompletedSteps, markStepCompleted, type FlowStep } from "./flowState";
 import { DEFAULT_NETWORK, useNetworkVariable } from "./networkConfig";
 
 const TABS = [
   { key: "home", label: "Home" },
   { key: "issue", label: "Issue" },
+  { key: "explore", label: "Explore 🔍" },
   { key: "holder", label: "My Credentials" },
   { key: "verify", label: "Verify" },
   { key: "admin", label: "Admin" },
@@ -32,8 +34,12 @@ function App() {
   const [presentToken, setPresentToken] = useState("");
   const [history, setHistory] = useState<VerifyTimelineEntry[]>([]);
   const [showPolicyAdmin, setShowPolicyAdmin] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState(() => getCompletedSteps());
 
   const navigateToTab = (tab: "issue" | "holder" | "verify") => setActiveTab(tab);
+  const completeStep = useCallback((step: FlowStep) => {
+    setCompletedSteps(markStepCompleted(step));
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -59,7 +65,7 @@ function App() {
   return (
     <div className="min-h-screen pb-10">
       <WalletHeader network={DEFAULT_NETWORK} packageId={packageId} connected={Boolean(account)} />
-      {account && <GettingStarted onNavigate={navigateToTab} />}
+      {account && <GettingStarted completedSteps={completedSteps} onNavigate={navigateToTab} />}
       <div className="sticky top-0 z-10 mx-auto mt-4 w-full max-w-6xl border-b border-gray-800 bg-gray-950/90 px-4 py-2 backdrop-blur">
         <div className="flex w-full flex-wrap gap-2">
         {TABS.map((tab) => (
@@ -84,7 +90,7 @@ function App() {
             onPrefillConsumed={() => setPrefillVerifyId("")}
             autoTrigger={autoTrigger}
             onVerified={(entry) => {
-              markStepCompleted(5);
+              completeStep(5);
               setHistory((prev) => [entry, ...prev]);
             }}
           />
@@ -92,8 +98,8 @@ function App() {
 
         {activeTab === "issue" && account && (
           <>
-            <DomainPanel packageId={packageId} />
-            <IssuerPanel onIssued={() => markStepCompleted(3)} />
+            <DomainPanel packageId={packageId} onStepCompleted={completeStep} />
+            <IssuerPanel onIssued={() => completeStep(3)} />
             <IssuerDashboard
               onNavigateToVerify={(id) => {
                 setPrefillVerifyId(id);
@@ -114,7 +120,7 @@ function App() {
           <HolderView
             address={account?.address}
             onLoaded={(count) => {
-              if (count > 0) markStepCompleted(4);
+              if (count > 0) completeStep(4);
             }}
             onNavigateToVerify={(id) => {
               setActiveTab("verify");
@@ -130,6 +136,16 @@ function App() {
           </div>
         )}
 
+        {activeTab === "explore" && (
+          <CredentialExplorer
+            onNavigateToVerify={(id) => {
+              setPrefillVerifyId(id);
+              setAutoTrigger((value) => value + 1);
+              setActiveTab("verify");
+            }}
+          />
+        )}
+
         {activeTab === "verify" && (
           <>
             {presentToken ? (
@@ -140,7 +156,7 @@ function App() {
                 onPrefillConsumed={() => setPrefillVerifyId("")}
                 autoTrigger={autoTrigger}
                 onVerified={(entry) => {
-                  markStepCompleted(5);
+                  completeStep(5);
                   setHistory((prev) => [entry, ...prev]);
                 }}
               />
