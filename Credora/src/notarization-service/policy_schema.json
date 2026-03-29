@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://credora.local/schemas/trust-policy-v1.json",
+  "title": "Credora Trust Policy v1",
+  "type": "object",
+  "required": [
+    "version",
+    "trusted_domains",
+    "trusted_issuers",
+    "trusted_templates",
+    "blocked_issuers",
+    "revoked_credentials",
+    "disputes",
+    "dispute_default_disposition"
+  ],
+  "properties": {
+    "version": { "type": "string" },
+    "updated_at": { "type": "string" },
+    "trusted_domains": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "trusted_issuers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "trusted_templates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["template_id"],
+        "properties": {
+          "template_id": { "type": "string" },
+          "allowed_versions": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "min_version": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "trusted_template_versions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "blocked_issuers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "revoked_credentials": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["target_id", "reason_code", "timestamp", "evidence_id", "revoked_by"],
+        "properties": {
+          "target_id": { "type": "string" },
+          "reason_code": { "type": "string" },
+          "timestamp": { "type": "string" },
+          "evidence_id": { "type": "string" },
+          "revoked_by": { "type": "string" },
+          "domain": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "disputes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["opened_by", "target_id", "reason", "status", "opened_at", "disposition"],
+        "properties": {
+          "opened_by": { "type": "string" },
+          "target_id": { "type": "string" },
+          "reason": { "type": "string" },
+          "status": { "type": "string" },
+          "opened_at": { "type": "string" },
+          "resolved_by": { "type": ["string", "null"] },
+          "resolution_note": { "type": ["string", "null"] },
+          "resolved_at": { "type": ["string", "null"] },
+          "disposition": { "type": "string", "enum": ["warning", "blocked", "resolved"] }
+        }
+      }
+    },
+    "dispute_default_disposition": {
+      "type": "string",
+      "enum": ["warning", "blocked", "resolved"]
+    }
+  }
+}

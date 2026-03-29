@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://credora.local/schemas/verify-v2-response.json",
+  "title": "Credora Verify Response v2",
+  "type": "object",
+  "required": [
+    "id",
+    "verified",
+    "status",
+    "summary",
+    "reasons",
+    "policy_version",
+    "checked_at",
+    "request_id",
+    "latency_ms",
+    "cache_hit"
+  ],
+  "properties": {
+    "id": { "type": "string" },
+    "verified": { "type": "boolean" },
+    "status": {
+      "type": "string",
+      "enum": [
+        "valid",
+        "not_found",
+        "revoked",
+        "unknown_issuer",
+        "unknown_domain",
+        "invalid_template",
+        "stale_template",
+        "policy_error",
+        "disputed"
+      ]
+    },
+    "summary": { "type": "string" },
+    "reasons": { "type": "array", "items": { "type": "string" } },
+    "issuer": {},
+    "domain": {},
+    "template": {},
+    "revocation": {},
+    "dispute": {},
+    "policy_version": { "type": "string" },
+    "checked_at": { "type": "string" },
+    "request_id": { "type": "string" },
+    "evidence": {},
+    "latency_ms": { "type": "number" },
+    "cache_hit": { "type": "boolean" },
+    "compat_notice": { "type": ["string", "null"] }
+  }
+}
