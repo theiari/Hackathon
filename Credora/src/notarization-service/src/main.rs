@@ -30,6 +30,7 @@ use axum::{
 use base64::Engine;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use tokio::net::TcpListener;
+use axum::http::HeaderValue;
 use tower_http::cors::{Any, CorsLayer};
 use chrono::Utc;
 use sha2::{Digest, Sha256};
@@ -326,7 +327,16 @@ async fn main() -> anyhow::Result<()> {
         )
         // Verify (works for both Locked & Dynamic)
         .route("/notarizations/:id/verify", post(verify_notarization))
-        .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any))
+        .layer(
+            CorsLayer::new()
+                .allow_origin(
+                    "https://credora-iota.netlify.app"
+                        .parse::<HeaderValue>()
+                        .unwrap(),
+                )
+                .allow_methods(Any)
+                .allow_headers(Any),
+        )
         .with_state(state);
 
     // 4. Start HTTP server
