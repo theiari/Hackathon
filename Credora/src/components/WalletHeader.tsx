@@ -8,7 +8,7 @@ export function WalletHeader({
 }) {
   return (
     <header className="border-b border-obsidian-800/40 bg-obsidian-950">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+      <div className="credora-container flex items-center justify-between py-4">
         <div className="flex items-center gap-3">
           <Shield className="h-7 w-7 text-gold-500" />
           <div>

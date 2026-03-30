@@ -81,12 +81,12 @@ function App() {
   );
 
   return (
-    <div className="credora-bg pb-16">
+    <div className="credora-bg w-full pb-16">
       <WalletHeader network={DEFAULT_NETWORK} />
 
       {/* Tab navigation */}
       <nav className="sticky top-0 z-20 border-b border-obsidian-800/50 bg-obsidian-950/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-6 py-2.5">
+        <div className="credora-container flex items-center gap-1 overflow-x-auto py-2.5">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.key;
@@ -105,7 +105,7 @@ function App() {
       </nav>
 
       {/* Main content */}
-      <main className="mx-auto mt-8 grid max-w-7xl gap-8 px-6">
+      <main className="credora-container mt-8 grid gap-8">
         {(activeTab === "home" || showPublicVerifyOnHome) && <LandingHero connected={Boolean(account)} onNavigate={setActiveTab} />}
 
         {showPublicVerifyOnHome && (

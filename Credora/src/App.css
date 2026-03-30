@@ -7,6 +7,9 @@
    ═══════════════════════════════════════════════════════════ */
 
 @theme {
+  /* ── Container ── */
+  --container-7xl: 80rem;
+
   --color-obsidian-950: #08090c;
   --color-obsidian-900: #0e1117;
   --color-obsidian-850: #131720;
@@ -75,6 +78,16 @@ body {
     radial-gradient(ellipse 60% 40% at 80% 110%, color-mix(in srgb, var(--color-gold-700) 3%, transparent), transparent),
     var(--surface-base);
   min-height: 100vh;
+}
+
+/* ── Centered container ── */
+.credora-container {
+  width: 100%;
+  max-width: 80rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
 }
 
 /* ── Panel cards ── */
@@ -252,8 +265,18 @@ body {
   border-radius: 1px;
 }
 
+/* ── Root layout ── */
+html,
+body,
+#root {
+  width: 100%;
+}
+
 /* ── Radix overrides ── */
 .radix-themes {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
   --color-background: var(--surface-base) !important;
 }
 
