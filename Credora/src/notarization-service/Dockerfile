@@ -28,6 +28,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/notarization-service /app/notarization-service
+COPY trust_policy.json /app/trust_policy.json
+COPY policy_governance.json /app/policy_governance.json
+COPY onboarding_store.json /app/onboarding_store.json
+
+WORKDIR /app
 
 EXPOSE 8080
 

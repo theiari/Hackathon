@@ -1,6 +1,3 @@
-echo "target/
-**/*.rs.bk
+target/
 .env
-.git/
-.gitignore
-Cargo.lock" > Credora/src/notarization-service/.dockerignore
+*.local
