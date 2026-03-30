@@ -1,0 +1,53 @@
+FROM --platform=$BUILDPLATFORM rustlang/rust:nightly-slim AS builder
+
+ARG TARGETPLATFORM
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    ca-certificates \
+    gcc-x86-64-linux-gnu \
+    libc6-dev-amd64-cross \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN rustup target add x86_64-unknown-linux-gnu
+
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
+ENV PKG_CONFIG_ALLOW_CROSS=1
+ENV PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
+ENV OPENSSL_DIR=/usr
+
+COPY Cargo.toml ./
+
+RUN mkdir src && \
+    printf 'fn main() {}\n' > src/main.rs && \
+    cargo build --release --target x86_64-unknown-linux-gnu || true
+
+RUN rm -rf src
+COPY src ./src
+RUN find src -name '*.rs' -exec touch {} +
+
+RUN cargo build --release --target x86_64-unknown-linux-gnu --bin notarization-service
+
+FROM debian:bookworm-slim AS runtime
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/notarization-service /app/notarization-service
+COPY trust_policy.json /app/trust_policy.json
+COPY policy_governance.json /app/policy_governance.json
+COPY onboarding_store.json /app/onboarding_store.json
+
+WORKDIR /app
+
+EXPOSE 8080
+
+ENV RUST_LOG=info
+
+CMD ["/app/notarization-service"]

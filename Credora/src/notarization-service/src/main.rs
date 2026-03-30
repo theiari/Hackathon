@@ -329,11 +329,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/notarizations/:id/verify", post(verify_notarization))
         .layer(
             CorsLayer::new()
-                .allow_origin(
-                    "https://credora-iota.netlify.app"
-                        .parse::<HeaderValue>()
-                        .unwrap(),
-                )
+                .allow_origin(Any)
                 .allow_methods(Any)
                 .allow_headers(Any),
         )

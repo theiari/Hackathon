@@ -118,6 +118,17 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
   const hasDomain = Boolean(domainId.trim());
   const hasTemplate = Boolean(templateId.trim());
 
+  // Auto-fill domain & template IDs when DomainPanel writes them to flowState
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { key, value } = (e as CustomEvent).detail;
+      if (key === "lastDomainId") setDomainId(value);
+      if (key === "lastTemplateId") setTemplateId(value);
+    };
+    window.addEventListener("flowStateChange", handler);
+    return () => window.removeEventListener("flowStateChange", handler);
+  }, []);
+
   useEffect(() => {
     if (!templateId.trim()) { setTemplateFields([]); return; }
     void (async () => {

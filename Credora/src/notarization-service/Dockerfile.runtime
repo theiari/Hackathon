@@ -1,0 +1,18 @@
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY notarization-service /app/notarization-service
+COPY trust_policy.json /app/trust_policy.json
+COPY policy_governance.json /app/policy_governance.json
+COPY onboarding_store.json /app/onboarding_store.json
+
+EXPOSE 8080
+
+ENV RUST_LOG=info
+
+CMD ["/app/notarization-service"]

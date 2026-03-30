@@ -46,6 +46,7 @@ export function getCurrentStep(completed: Set<number>): FlowStep {
 
 export function setFlowValue(key: keyof typeof KEYS, value: string) {
   localStorage.setItem(KEYS[key], value);
+  window.dispatchEvent(new CustomEvent("flowStateChange", { detail: { key, value } }));
 }
 
 export function getFlowValue(key: keyof typeof KEYS): string {
