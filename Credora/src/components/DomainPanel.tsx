@@ -73,23 +73,23 @@ function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-2xl border border-gray-800/60 bg-gray-900/60">
+    <div className="rounded-2xl border border-obsidian-700/60 bg-obsidian-900/60">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-5 py-4 text-left"
+        className="flex w-full items-center gap-3 px-7 py-5 text-left"
       >
         {step != null && (
-          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${done ? "bg-green-600/20 text-green-400" : "bg-indigo-600/20 text-indigo-300"}`}>
+          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${done ? "bg-sage-600/20 text-sage-400" : "bg-gold-800/20 text-gold-400"}`}>
             {done ? <CheckCircle2 className="h-4 w-4" /> : step}
           </span>
         )}
         <div className="flex-1">
-          <p className="text-sm font-semibold text-white">{title}</p>
-          {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+          <p className="text-sm font-semibold text-obsidian-100">{title}</p>
+          {subtitle && <p className="text-xs text-obsidian-500">{subtitle}</p>}
         </div>
-        {open ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+        {open ? <ChevronDown className="h-4 w-4 text-obsidian-500" /> : <ChevronRight className="h-4 w-4 text-obsidian-500" />}
       </button>
-      {open && <div className="border-t border-gray-800/40 px-5 pb-5 pt-4">{children}</div>}
+      {open && <div className="border-t border-obsidian-700/40 px-7 pb-7 pt-5">{children}</div>}
     </div>
   );
 }
@@ -379,7 +379,7 @@ export function DomainPanel({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* ─── Step 1: Create Domain ─── */}
       <Section
         step={1}
@@ -388,50 +388,50 @@ export function DomainPanel({
         subtitle={hasDomain ? `Institution: ${truncateId(domainId)}` : "Create the on-chain profile your school will issue certificates from"}
         defaultOpen={!hasDomain}
       >
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-6">
+          <div className="grid gap-5 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-400">Institution Name</label>
-              <p className="mb-1.5 text-[11px] text-gray-500">The human-readable name that appears for your issuing institution</p>
-              <input className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30" placeholder="e.g. Credora Demo School" value={domainName} onChange={(e) => setDomainName(e.target.value)} />
+              <label className="mb-1 block text-xs font-medium text-obsidian-400">Institution Name</label>
+              <p className="mb-1.5 text-[11px] text-obsidian-500">The human-readable name that appears for your issuing institution</p>
+              <input className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30" placeholder="e.g. Credora Demo School" value={domainName} onChange={(e) => setDomainName(e.target.value)} />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-400">Description</label>
-              <p className="mb-1.5 text-[11px] text-gray-500">Brief description of the registrar, faculty, or certification office</p>
-              <input className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30" placeholder="e.g. University registrar issuing language and degree certificates" value={domainDesc} onChange={(e) => setDomainDesc(e.target.value)} />
+              <label className="mb-1 block text-xs font-medium text-obsidian-400">Description</label>
+              <p className="mb-1.5 text-[11px] text-obsidian-500">Brief description of the registrar, faculty, or certification office</p>
+              <input className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30" placeholder="e.g. University registrar issuing language and degree certificates" value={domainDesc} onChange={(e) => setDomainDesc(e.target.value)} />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-400">Institution DID</label>
-            <p className="mb-1.5 text-[11px] text-gray-500">Auto-generated from the institution name. You can override it if needed.</p>
+            <label className="mb-1 block text-xs font-medium text-obsidian-400">Institution DID</label>
+            <p className="mb-1.5 text-[11px] text-obsidian-500">Auto-generated from the institution name. You can override it if needed.</p>
             <div className="flex gap-2">
-              <input className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30" placeholder="did:iota:domain:..." value={domainDid} maxLength={256} onChange={(e) => setDomainDid(normalizeDidInput(e.target.value))} />
+              <input className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30" placeholder="did:iota:domain:..." value={domainDid} maxLength={256} onChange={(e) => setDomainDid(normalizeDidInput(e.target.value))} />
               {domainDid.trim() && (
-                <span className={`mt-2 text-sm ${domainDidValid ? "text-green-400" : "text-red-400"}`}>
+                <span className={`mt-2 text-sm ${domainDidValid ? "text-sage-400" : "text-rose-400"}`}>
                   {domainDidValid ? "✓" : "✗"}
                 </span>
               )}
             </div>
             {domainDid.trim() && !domainDidValid && (
-              <p className="mt-1 text-xs text-red-400">Must follow did:method:identifier format</p>
+              <p className="mt-1 text-xs text-rose-400">Must follow did:method:identifier format</p>
             )}
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-400">Signer Addresses</label>
-            <p className="mb-1.5 text-[11px] text-gray-500">
+            <label className="mb-1 block text-xs font-medium text-obsidian-400">Signer Addresses</label>
+            <p className="mb-1.5 text-[11px] text-obsidian-500">
               Comma-separated wallet addresses authorized to manage certificate templates.
               {account?.address ? " Your address was auto-filled." : ""}
             </p>
-            <input className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30" placeholder="0x...,0x..." value={domainSigners} onChange={(e) => setDomainSigners(e.target.value)} />
+            <input className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30" placeholder="0x...,0x..." value={domainSigners} onChange={(e) => setDomainSigners(e.target.value)} />
           </div>
 
           <div className="flex items-end gap-4">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-400">Approval Threshold</label>
-              <p className="mb-1.5 text-[11px] text-gray-500">Use 1 for a fast registrar demo. Raise it later for multi-signer governance.</p>
-              <input type="number" min={1} className="w-24 rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:border-indigo-500/50 focus:outline-none" value={domainThreshold} onChange={(e) => setDomainThreshold(e.target.value)} />
+              <label className="mb-1 block text-xs font-medium text-obsidian-400">Approval Threshold</label>
+              <p className="mb-1.5 text-[11px] text-obsidian-500">Use 1 for a fast registrar demo. Raise it later for multi-signer governance.</p>
+              <input type="number" min={1} className="w-24 rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 focus:border-gold-600/50 focus:outline-none" value={domainThreshold} onChange={(e) => setDomainThreshold(e.target.value)} />
             </div>
             <TxButton state={txState} onClick={createDomain} className="ml-auto">
               <span className="flex items-center gap-1.5">
@@ -445,14 +445,14 @@ export function DomainPanel({
 
       {/* ─── DID Info Card ─── */}
       {generatedDid && (
-        <div className="rounded-xl border border-indigo-800/40 bg-indigo-950/10 px-5 py-3">
-          <p className="text-xs font-medium text-indigo-300">Institution DID Created</p>
-          <p className="mt-1 break-all text-xs text-gray-300">{generatedDid}</p>
+        <div className="rounded-xl border border-gold-700/40 bg-gold-800/10 px-5 py-3">
+          <p className="text-xs font-medium text-gold-400">Institution DID Created</p>
+          <p className="mt-1 break-all text-xs text-obsidian-300">{generatedDid}</p>
           <a
             href={`${API_BASE}/api/v1/did/resolve/${encodeURIComponent(generatedDid)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-1.5 inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
+            className="mt-1.5 inline-flex items-center gap-1 text-xs text-gold-400 hover:text-gold-400"
           >
             View DID Document <ExternalLink className="h-3 w-3" />
           </a>
@@ -467,12 +467,12 @@ export function DomainPanel({
         subtitle="Define the fields your institution will include in each certificate"
         defaultOpen={hasDomain && !getFlowValue("lastTemplateId")}
       >
-        <div className="space-y-4">
+        <div className="space-y-6">
           {hasDomain && (
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-800/40 bg-gray-800/20 px-3 py-2 text-xs text-gray-400">
-              <span>Domain: <code className="text-gray-300">{truncateId(domainId)}</code></span>
-              {hasDomainCap && <span>Admin Cap: <code className="text-gray-300">{truncateId(domainCapId)}</code></span>}
-              <button className="ml-auto text-indigo-400 hover:text-indigo-300" onClick={() => {
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-obsidian-700/40 bg-obsidian-800/20 px-4 py-2.5 text-xs text-obsidian-400">
+              <span>Domain: <code className="text-obsidian-300">{truncateId(domainId)}</code></span>
+              {hasDomainCap && <span>Admin Cap: <code className="text-obsidian-300">{truncateId(domainCapId)}</code></span>}
+              <button className="ml-auto text-gold-400 hover:text-gold-400" onClick={() => {
                 setDomainId(getFlowValue("lastDomainId"));
                 setDomainCapId(getFlowValue("lastDomainCapId"));
               }}>
@@ -484,31 +484,31 @@ export function DomainPanel({
           {!hasDomain && (
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-400">Domain ID</label>
-                <p className="mb-1.5 text-[11px] text-gray-500">Create a domain above first, or paste an existing ID</p>
-                <input className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30" placeholder="0x..." value={domainId} onChange={(e) => setDomainId(e.target.value)} />
+                <label className="mb-1 block text-xs font-medium text-obsidian-400">Domain ID</label>
+                <p className="mb-1.5 text-[11px] text-obsidian-500">Create a domain above first, or paste an existing ID</p>
+                <input className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30" placeholder="0x..." value={domainId} onChange={(e) => setDomainId(e.target.value)} />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-400">DomainAdminCap ID</label>
-                <p className="mb-1.5 text-[11px] text-gray-500">The admin capability object you received when creating the domain</p>
-                <input className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30" placeholder="0x..." value={domainCapId} onChange={(e) => setDomainCapId(e.target.value)} />
+                <label className="mb-1 block text-xs font-medium text-obsidian-400">DomainAdminCap ID</label>
+                <p className="mb-1.5 text-[11px] text-obsidian-500">The admin capability object you received when creating the domain</p>
+                <input className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30" placeholder="0x..." value={domainCapId} onChange={(e) => setDomainCapId(e.target.value)} />
               </div>
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-400">Credential Type</label>
-              <p className="mb-1.5 text-[11px] text-gray-500">e.g. Bachelor of Science Diploma, B2 Language Certificate</p>
-              <input className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30" placeholder="Bachelor of Science Diploma" value={credType} onChange={(e) => setCredType(e.target.value)} />
+              <label className="mb-1 block text-xs font-medium text-obsidian-400">Credential Type</label>
+              <p className="mb-1.5 text-[11px] text-obsidian-500">e.g. Bachelor of Science Diploma, B2 Language Certificate</p>
+              <input className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30" placeholder="Bachelor of Science Diploma" value={credType} onChange={(e) => setCredType(e.target.value)} />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-400">Schema DID</label>
-              <p className="mb-1.5 text-[11px] text-gray-500">Auto-generated from credential type</p>
+              <label className="mb-1 block text-xs font-medium text-obsidian-400">Schema DID</label>
+              <p className="mb-1.5 text-[11px] text-obsidian-500">Auto-generated from credential type</p>
               <div className="flex gap-2">
-                <input className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30" placeholder="did:iota:schema:..." value={did} maxLength={256} onChange={(e) => setDid(normalizeDidInput(e.target.value))} />
+                <input className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30" placeholder="did:iota:schema:..." value={did} maxLength={256} onChange={(e) => setDid(normalizeDidInput(e.target.value))} />
                 {did.trim() && (
-                  <span className={`mt-2 text-sm ${templateDidValid ? "text-green-400" : "text-red-400"}`}>
+                  <span className={`mt-2 text-sm ${templateDidValid ? "text-sage-400" : "text-rose-400"}`}>
                     {templateDidValid ? "✓" : "✗"}
                   </span>
                 )}
@@ -518,57 +518,57 @@ export function DomainPanel({
 
           {/* Template fields */}
           <div className="space-y-2">
-            <label className="block text-xs font-medium text-gray-400">Template Fields</label>
-            <p className="text-[11px] text-gray-500">Define the student and certificate fields. Each issued certificate will follow this schema.</p>
+            <label className="block text-xs font-medium text-obsidian-400">Template Fields</label>
+            <p className="text-[11px] text-obsidian-500">Define the student and certificate fields. Each issued certificate will follow this schema.</p>
             <div className="space-y-2">
               {fields.map((field, index) => (
-                <div key={index} className="rounded-lg border border-gray-800/40 bg-gray-800/20">
+                <div key={index} className="rounded-lg border border-obsidian-700/40 bg-obsidian-800/20">
                   <div className="flex flex-wrap items-start gap-2 p-2.5">
-                    <input className="min-w-[120px] flex-1 rounded-md border border-gray-700/50 bg-gray-800/50 px-2.5 py-1.5 text-sm text-gray-100 placeholder:text-gray-600" placeholder="Field name" value={field.name} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, name: e.target.value } : it)))} />
-                    <select className="rounded-md border border-gray-700/50 bg-gray-800/50 px-2 py-1.5 text-sm text-gray-100" value={field.fieldType} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, fieldType: Number(e.target.value) } : it)))}>
+                    <input className="min-w-[120px] flex-1 rounded-md border border-obsidian-700/50 bg-obsidian-800/50 px-2.5 py-1.5 text-sm text-obsidian-100 placeholder:text-obsidian-500" placeholder="Field name" value={field.name} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, name: e.target.value } : it)))} />
+                    <select className="rounded-md border border-obsidian-700/50 bg-obsidian-800/50 px-2 py-1.5 text-sm text-obsidian-100" value={field.fieldType} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, fieldType: Number(e.target.value) } : it)))}>
                       {Object.entries(FIELD_TYPE_LABELS).map(([key, label]) => (<option key={key} value={key}>{label}</option>))}
                     </select>
-                    <input className="min-w-[140px] flex-1 rounded-md border border-gray-700/50 bg-gray-800/50 px-2.5 py-1.5 text-sm text-gray-100 placeholder:text-gray-600" placeholder="Description (optional)" value={field.description} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, description: e.target.value } : it)))} />
-                    <label className="flex items-center gap-1.5 rounded-md border border-gray-700/50 px-2 py-1.5 text-xs text-gray-300">
+                    <input className="min-w-[140px] flex-1 rounded-md border border-obsidian-700/50 bg-obsidian-800/50 px-2.5 py-1.5 text-sm text-obsidian-100 placeholder:text-obsidian-500" placeholder="Description (optional)" value={field.description} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, description: e.target.value } : it)))} />
+                    <label className="flex items-center gap-1.5 rounded-md border border-obsidian-700/50 px-2 py-1.5 text-xs text-obsidian-300">
                       <input type="checkbox" checked={field.required} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFields((prev) => prev.map((it, i) => (i === index ? {    ...it, required: e.target.checked } : it)))} />
                       Req
                     </label>
-                    <button className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-red-900/30 hover:text-red-400" onClick={() => setFields((prev) => prev.filter((_, i) => i !== index))} title="Remove field">
+                    <button className="rounded-md p-1.5 text-obsidian-500 transition-colors hover:bg-rose-900/30 hover:text-rose-400" onClick={() => setFields((prev) => prev.filter((_, i) => i !== index))} title="Remove field">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                   {/* Constraint inputs */}
-                  <div className="border-t border-gray-800/30 px-2.5 pb-2.5 pt-2">
-                    <p className="mb-1.5 text-[10px] font-medium text-gray-500">Constraints (optional)</p>
+                  <div className="border-t border-obsidian-700/30 px-2.5 pb-2.5 pt-2">
+                    <p className="mb-1.5 text-[10px] font-medium text-obsidian-500">Constraints (optional)</p>
                     <div className="flex flex-wrap gap-2">
                       {(field.fieldType === 0 || field.fieldType === 4) && (
                         <>
                           <div className="flex items-center gap-1">
-                            <label className="text-[10px] text-gray-500">Min len</label>
-                            <input type="number" min={0} className="w-16 rounded border border-gray-700/50 bg-gray-800/50 px-1.5 py-1 text-xs text-gray-100" value={field.minLength || ""} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, minLength: Number(e.target.value) || 0 } : it)))} />
+                            <label className="text-[10px] text-obsidian-500">Min len</label>
+                            <input type="number" min={0} className="w-16 rounded border border-obsidian-700/50 bg-obsidian-800/50 px-1.5 py-1 text-xs text-obsidian-100" value={field.minLength || ""} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, minLength: Number(e.target.value) || 0 } : it)))} />
                           </div>
                           <div className="flex items-center gap-1">
-                            <label className="text-[10px] text-gray-500">Max len</label>
-                            <input type="number" min={0} className="w-16 rounded border border-gray-700/50 bg-gray-800/50 px-1.5 py-1 text-xs text-gray-100" value={field.maxLength || ""} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, maxLength: Number(e.target.value) || 0 } : it)))} />
+                            <label className="text-[10px] text-obsidian-500">Max len</label>
+                            <input type="number" min={0} className="w-16 rounded border border-obsidian-700/50 bg-obsidian-800/50 px-1.5 py-1 text-xs text-obsidian-100" value={field.maxLength || ""} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, maxLength: Number(e.target.value) || 0 } : it)))} />
                           </div>
                         </>
                       )}
                       {field.fieldType === 1 && (
                         <>
                           <div className="flex items-center gap-1">
-                            <label className="text-[10px] text-gray-500">Min val</label>
-                            <input type="number" min={0} className="w-20 rounded border border-gray-700/50 bg-gray-800/50 px-1.5 py-1 text-xs text-gray-100" value={field.minValue || ""} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, minValue: Number(e.target.value) || 0 } : it)))} />
+                            <label className="text-[10px] text-obsidian-500">Min val</label>
+                            <input type="number" min={0} className="w-20 rounded border border-obsidian-700/50 bg-obsidian-800/50 px-1.5 py-1 text-xs text-obsidian-100" value={field.minValue || ""} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, minValue: Number(e.target.value) || 0 } : it)))} />
                           </div>
                           <div className="flex items-center gap-1">
-                            <label className="text-[10px] text-gray-500">Max val</label>
-                            <input type="number" min={0} className="w-20 rounded border border-gray-700/50 bg-gray-800/50 px-1.5 py-1 text-xs text-gray-100" value={field.maxValue || ""} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, maxValue: Number(e.target.value) || 0 } : it)))} />
+                            <label className="text-[10px] text-obsidian-500">Max val</label>
+                            <input type="number" min={0} className="w-20 rounded border border-obsidian-700/50 bg-obsidian-800/50 px-1.5 py-1 text-xs text-obsidian-100" value={field.maxValue || ""} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, maxValue: Number(e.target.value) || 0 } : it)))} />
                           </div>
                         </>
                       )}
                       {field.fieldType === 0 && (
                         <div className="flex items-center gap-1">
-                          <label className="text-[10px] text-gray-500">Pattern</label>
-                          <select className="rounded border border-gray-700/50 bg-gray-800/50 px-1.5 py-1 text-xs text-gray-100" value={field.patternHint} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, patternHint: e.target.value } : it)))}>
+                          <label className="text-[10px] text-obsidian-500">Pattern</label>
+                          <select className="rounded border border-obsidian-700/50 bg-obsidian-800/50 px-1.5 py-1 text-xs text-obsidian-100" value={field.patternHint} onChange={(e) => setFields((prev) => prev.map((it, i) => (i === index ? { ...it, patternHint: e.target.value } : it)))}>
                             {PATTERN_HINTS.map((p) => (<option key={p} value={p}>{p || "(none)"}</option>))}
                           </select>
                         </div>
@@ -578,7 +578,7 @@ export function DomainPanel({
                 </div>
               ))}
             </div>
-            <button className="flex items-center gap-1.5 rounded-lg border border-dashed border-gray-700/60 px-3 py-2 text-xs text-gray-400 transition-colors hover:border-indigo-500/40 hover:text-indigo-300" onClick={() => setFields((prev) => [...prev, emptyField()])}>
+            <button className="flex items-center gap-1.5 rounded-lg border border-dashed border-obsidian-700/60 px-4 py-2.5 text-xs text-obsidian-400 transition-colors hover:border-gold-600/40 hover:text-gold-400" onClick={() => setFields((prev) => [...prev, emptyField()])}>
               <Plus className="h-3.5 w-3.5" />
               Add field
             </button>
@@ -586,8 +586,8 @@ export function DomainPanel({
 
           <div className="flex flex-wrap items-end gap-4">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-400">Template Version</label>
-              <input type="number" min={1} className="w-20 rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:border-indigo-500/50 focus:outline-none" value={version} onChange={(e) => setVersion(e.target.value)} />
+              <label className="mb-1 block text-xs font-medium text-obsidian-400">Template Version</label>
+              <input type="number" min={1} className="w-20 rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 focus:border-gold-600/50 focus:outline-none" value={version} onChange={(e) => setVersion(e.target.value)} />
             </div>
             <TxButton state={txState} onClick={publishTemplateByDecree} className="ml-auto">
               <span className="flex items-center gap-1.5">
@@ -598,35 +598,35 @@ export function DomainPanel({
           </div>
 
           {/* Advanced: Proposal + Voting */}
-          <div className="border-t border-gray-800/40 pt-3">
-            <button className="flex items-center gap-1.5 text-xs text-gray-500 transition-colors hover:text-gray-300" onClick={() => setShowAdvancedFlow((v) => !v)}>
+          <div className="border-t border-obsidian-700/40 pt-3">
+            <button className="flex items-center gap-1.5 text-xs text-obsidian-500 transition-colors hover:text-obsidian-300" onClick={() => setShowAdvancedFlow((v) => !v)}>
               {showAdvancedFlow ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
               Advanced approval flow for multi-signer teams
             </button>
 
             {showAdvancedFlow && (
-              <div className="mt-3 space-y-3 rounded-xl border border-gray-800/40 bg-gray-800/10 p-4">
-                <p className="text-xs text-gray-500">
+              <div className="mt-3 space-y-3 rounded-xl border border-obsidian-700/40 bg-obsidian-800/10 p-4">
+                <p className="text-xs text-obsidian-500">
                   Use this only if your institution needs multiple signers. The default judge path should stay on the simple single-admin publishing flow.
                 </p>
 
-                <div className="space-y-2 rounded-lg border border-gray-800/30 p-3">
-                  <p className="text-xs font-medium text-gray-300">1. Submit Proposal</p>
+                <div className="space-y-2 rounded-lg border border-obsidian-700/30 p-3">
+                  <p className="text-xs font-medium text-obsidian-300">1. Submit Proposal</p>
                   <TxButton state={txState} onClick={submitProposal}>Submit Proposal</TxButton>
                   {lastProposalId && (
-                    <div className="flex items-center gap-2 rounded-lg border border-green-800/40 bg-green-900/10 px-3 py-2 text-xs text-green-300">
+                    <div className="flex items-center gap-2 rounded-lg border border-sage-800/40 bg-sage-900/10 px-4 py-2.5 text-xs text-sage-300">
                       Proposal #{lastProposalId}
-                      <button className="rounded border border-green-700/50 px-2 py-0.5 text-[11px]" onClick={() => void copyProposal()}>
+                      <button className="rounded border border-sage-700/50 px-2 py-0.5 text-[11px]" onClick={() => void copyProposal()}>
                         {proposalCopied ? "Copied!" : "Copy"}
                       </button>
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-2 rounded-lg border border-gray-800/30 p-3">
-                  <p className="text-xs font-medium text-gray-300">2. Approve</p>
-                  <p className="text-[11px] text-gray-500">Each signer approves once.</p>
-                  <input className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600" placeholder="Proposal ID" value={proposalId} onChange={(e) => setProposalId(e.target.value)} />
+                <div className="space-y-2 rounded-lg border border-obsidian-700/30 p-3">
+                  <p className="text-xs font-medium text-obsidian-300">2. Approve</p>
+                  <p className="text-[11px] text-obsidian-500">Each signer approves once.</p>
+                  <input className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500" placeholder="Proposal ID" value={proposalId} onChange={(e) => setProposalId(e.target.value)} />
                   <TxButton state={txState} onClick={approveProposal}>Approve</TxButton>
                 </div>
 
@@ -655,10 +655,10 @@ export function DomainPanel({
                   return null;
                 })()}
 
-                <div className="space-y-2 rounded-lg border border-gray-800/30 p-3">
-                  <p className="text-xs font-medium text-gray-300">3. Execute</p>
-                  <p className="text-[11px] text-gray-500">After enough approvals, execute to publish the template.</p>
-                  <input className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600" placeholder="Proposal ID" value={proposalId} onChange={(e) => setProposalId(e.target.value)} />
+                <div className="space-y-2 rounded-lg border border-obsidian-700/30 p-3">
+                  <p className="text-xs font-medium text-obsidian-300">3. Execute</p>
+                  <p className="text-[11px] text-obsidian-500">After enough approvals, execute to publish the template.</p>
+                  <input className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500" placeholder="Proposal ID" value={proposalId} onChange={(e) => setProposalId(e.target.value)} />
                   <TxButton state={txState} onClick={publishTemplate}>Execute & Publish</TxButton>
                 </div>
               </div>
@@ -669,27 +669,27 @@ export function DomainPanel({
 
       {/* Status message */}
       {result && (
-        <div className={`rounded-lg px-4 py-2.5 text-xs ${result.startsWith("Done") || result.includes("created") || result.includes("published") || result.includes("succeeded") ? "border border-green-800/40 bg-green-900/10 text-green-300" : "border border-gray-800/40 bg-gray-800/20 text-gray-400"}`}>
+        <div className={`rounded-lg px-4 py-2.5 text-xs ${result.startsWith("Done") || result.includes("created") || result.includes("published") || result.includes("succeeded") ? "border border-sage-800/40 bg-sage-900/10 text-sage-300" : "border border-obsidian-700/40 bg-obsidian-800/20 text-obsidian-400"}`}>
           {result}
         </div>
       )}
 
-      <div className="rounded-2xl border border-amber-800/30 bg-amber-900/10">
+      <div className="rounded-2xl border border-gold-800/30 bg-gold-900/10">
         <button
           className="flex w-full items-center gap-2 px-5 py-3 text-left"
           onClick={() => setShowGovernanceRoadmap((value) => !value)}
         >
-          {showGovernanceRoadmap ? <ChevronDown className="h-4 w-4 text-amber-300" /> : <ChevronRight className="h-4 w-4 text-amber-300" />}
-          <span className="shrink-0 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-300">
+          {showGovernanceRoadmap ? <ChevronDown className="h-4 w-4 text-gold-300" /> : <ChevronRight className="h-4 w-4 text-gold-300" />}
+          <span className="shrink-0 rounded-full bg-gold-500/20 px-3 py-1 text-xs font-medium text-gold-300">
             Roadmap: advanced governance
           </span>
-          <p className="text-xs text-amber-200/70">
+          <p className="text-xs text-gold-200/70">
             Multi-signer AA governance is available as an advanced prototype, but it is intentionally not part of the primary university certificate flow.
           </p>
         </button>
         {showGovernanceRoadmap && (
-          <div className="border-t border-amber-800/20 px-5 py-4">
-            <p className="mb-4 text-xs text-amber-200/70">
+          <div className="border-t border-gold-800/20 px-7 py-5">
+            <p className="mb-4 text-xs text-gold-200/70">
               Account Abstraction is deployed on-chain but current browser wallets do not yet support AA-authenticated transactions. Keep this as roadmap or optional discussion material for judges.
             </p>
             <AaGovernancePanel

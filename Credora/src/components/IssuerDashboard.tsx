@@ -109,21 +109,24 @@ export function IssuerDashboard({ onNavigateToVerify }: { onNavigateToVerify: (i
     : rows.filter((row) => row.verdict.status !== "revoked_on_chain");
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 shadow-md">
-      <h3 className="text-lg font-semibold text-white">📊 Issued Certificates</h3>
-      <div className="mt-3 grid gap-2 md:grid-cols-3">
-        <input className="rounded border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100" placeholder="Domain ID" value={domainId} onChange={(e) => setDomainId(e.target.value)} />
-        <input className="rounded border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100" placeholder="Verifier API key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-        <div className="flex items-center gap-2">
-          <button className="rounded border border-gray-600 px-3 py-2 text-xs text-indigo-300 disabled:opacity-50" disabled={!getFlowValue("lastDomainId")} onClick={() => setDomainId(getFlowValue("lastDomainId"))}>↙ Use last</button>
-          <button className="rounded bg-indigo-600 px-3 py-2 text-xs font-semibold text-white" onClick={() => void load()}>{loading ? "Loading..." : "Load credentials for domain"}</button>
+    <div className="panel animate-fade-in-up">
+      <div className="panel-header">
+        <h3 className="text-lg font-semibold text-obsidian-50">📊 Issued Certificates</h3>
+      </div>
+      <div className="panel-body">
+      <div className="grid gap-4 md:grid-cols-3">
+        <input className="credora-input text-sm" placeholder="Domain ID" value={domainId} onChange={(e) => setDomainId(e.target.value)} />
+        <input className="credora-input text-sm" placeholder="Verifier API key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+        <div className="flex items-center gap-3">
+          <button className="btn-ghost text-xs disabled:opacity-50" disabled={!getFlowValue("lastDomainId")} onClick={() => setDomainId(getFlowValue("lastDomainId"))}>↙ Use last</button>
+          <button className="btn-primary text-xs" onClick={() => void load()}>{loading ? "Loading..." : "Load credentials for domain"}</button>
         </div>
       </div>
-      {error && <p className="mt-2 text-xs text-red-300">{error}</p>}
-      {revokeError && <p className="mt-2 text-xs text-red-300">{revokeError}</p>}
-      <div className="mt-2 flex items-center justify-between gap-3">
-        <p className="text-xs text-gray-400">Showing {displayedRows.length} of {rows.length} certificates</p>
-        <label className="flex items-center gap-2 text-xs text-gray-300">
+      {error && <p className="mt-3 text-xs text-rose-300">{error}</p>}
+      {revokeError && <p className="mt-3 text-xs text-rose-300">{revokeError}</p>}
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <p className="text-xs text-obsidian-400">Showing {displayedRows.length} of {rows.length} certificates</p>
+        <label className="flex items-center gap-2 text-xs text-obsidian-300">
           <input
             type="checkbox"
             checked={showRevoked}
@@ -134,11 +137,11 @@ export function IssuerDashboard({ onNavigateToVerify }: { onNavigateToVerify: (i
       </div>
 
       {displayedRows.length === 0 ? (
-        <p className="mt-3 text-sm text-gray-400">No certificates issued by this domain yet.</p>
+        <p className="mt-4 text-sm text-obsidian-400">No certificates issued by this domain yet.</p>
       ) : (
-        <div className="mt-3 overflow-x-auto">
+        <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="text-gray-400">
+            <thead className="text-obsidian-400">
               <tr>
                 <th className="py-2">Record ID</th>
                 <th>Status</th>
@@ -152,20 +155,20 @@ export function IssuerDashboard({ onNavigateToVerify }: { onNavigateToVerify: (i
               {displayedRows.map((row) => {
                 const md = row.verdict.credential_metadata;
                 return (
-                  <tr key={row.record_id} className="border-t border-gray-800">
-                    <td className="py-2 font-mono text-gray-300">{shortId(row.record_id)}</td>
+                  <tr key={row.record_id} className="border-t border-obsidian-700">
+                    <td className="py-2 font-mono text-obsidian-300">{shortId(row.record_id)}</td>
                     <td><StatusBadge status={row.verdict.status} /></td>
-                    <td className="text-gray-200">{md?.credential_type ?? "Certificate"}</td>
-                    <td className="text-gray-400">{md?.issued_at ? new Date(md.issued_at).toLocaleDateString() : "-"}</td>
-                    <td className="text-gray-400">{md?.expiry_iso ? new Date(md.expiry_iso).toLocaleDateString() : "No expiry"}</td>
+                    <td className="text-obsidian-200">{md?.credential_type ?? "Certificate"}</td>
+                    <td className="text-obsidian-400">{md?.issued_at ? new Date(md.issued_at).toLocaleDateString() : "-"}</td>
+                    <td className="text-obsidian-400">{md?.expiry_iso ? new Date(md.expiry_iso).toLocaleDateString() : "No expiry"}</td>
                     <td>
                       <div className="flex gap-2">
-                        <button className="text-indigo-300" onClick={() => onNavigateToVerify(row.record_id)}>Verify →</button>
-                        <button className="text-indigo-300" onClick={() => void navigator.clipboard.writeText(row.record_id)}>Copy ID</button>
-                        <button className="text-indigo-300" onClick={() => void navigator.clipboard.writeText(`${window.location.origin}?verify=${encodeURIComponent(row.record_id)}`)}>Share 🔗</button>
+                        <button className="text-gold-400" onClick={() => onNavigateToVerify(row.record_id)}>Verify →</button>
+                        <button className="text-gold-400" onClick={() => void navigator.clipboard.writeText(row.record_id)}>Copy ID</button>
+                        <button className="text-gold-400" onClick={() => void navigator.clipboard.writeText(`${window.location.origin}?verify=${encodeURIComponent(row.record_id)}`)}>Share 🔗</button>
                         {hasDomainCap && row.verdict.status !== "revoked_on_chain" && (
                           <button
-                            className="text-red-300"
+                            className="text-rose-400 hover:text-rose-300 transition-colors"
                             onClick={() => {
                               if (window.confirm(`Revoke certificate ${row.record_id.slice(0, 10)}…? This action is irreversible.`)) {
                                 void revokeOnChain(row.record_id);
@@ -185,6 +188,7 @@ export function IssuerDashboard({ onNavigateToVerify }: { onNavigateToVerify: (i
           </table>
         </div>
       )}
+      </div>
     </div>
   );
 }

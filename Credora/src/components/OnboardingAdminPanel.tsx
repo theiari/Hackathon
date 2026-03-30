@@ -44,8 +44,8 @@ export function OnboardingAdminPanel() {
   };
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 shadow-md">
-      <h3 className="text-lg font-semibold text-white">Onboarding Admin</h3>
+    <div className="rounded-xl border border-obsidian-700 bg-obsidian-900 p-6 shadow-md">
+      <h3 className="text-lg font-semibold text-obsidian-100">Onboarding Admin</h3>
 
       {/* Step indicator */}
       <div className="mt-4 flex items-center gap-1">
@@ -55,30 +55,30 @@ export function OnboardingAdminPanel() {
               onClick={() => setStep(i)}
               className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                 i === step
-                  ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40"
-                  : "text-gray-500 hover:text-gray-300"
+                  ? "bg-gold-800/20 text-gold-400 border border-gold-600/40"
+                  : "text-obsidian-500 hover:text-obsidian-300"
               }`}
             >
               <s.icon className="h-3.5 w-3.5" />
               {s.label}
             </button>
-            {i < STEPS.length - 1 && <ChevronRight className="h-3 w-3 text-gray-700" />}
+            {i < STEPS.length - 1 && <ChevronRight className="h-3 w-3 text-obsidian-700" />}
           </div>
         ))}
       </div>
-      <p className="mt-1 text-[11px] text-gray-500">{STEPS[step].description}</p>
+      <p className="mt-1 text-[11px] text-obsidian-500">{STEPS[step].description}</p>
 
       {/* Auth fields (always visible) */}
       <div className="mt-4 space-y-2">
-        <p className="text-xs font-medium text-gray-400">Admin Credentials</p>
+        <p className="text-xs font-medium text-obsidian-400">Admin Credentials</p>
         <div className="grid gap-2 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-[11px] text-gray-500">API Key</label>
-            <input className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+            <label className="mb-1 block text-[11px] text-obsidian-500">API Key</label>
+            <input className="w-full rounded-lg border border-obsidian-700 bg-obsidian-950 px-3 py-2 text-sm text-obsidian-100" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
           </div>
           <div>
-            <label className="mb-1 block text-[11px] text-gray-500">Admin Nonce (optional)</label>
-            <input className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100" value={adminNonce} onChange={(e) => setAdminNonce(e.target.value)} />
+            <label className="mb-1 block text-[11px] text-obsidian-500">Admin Nonce (optional)</label>
+            <input className="w-full rounded-lg border border-obsidian-700 bg-obsidian-950 px-3 py-2 text-sm text-obsidian-100" value={adminNonce} onChange={(e) => setAdminNonce(e.target.value)} />
           </div>
         </div>
       </div>
@@ -87,27 +87,27 @@ export function OnboardingAdminPanel() {
       {step === 0 && (
         <div className="mt-4 space-y-2">
           <div>
-            <label className="mb-1 block text-[11px] text-gray-500">Organization Name</label>
-            <input className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)} />
+            <label className="mb-1 block text-[11px] text-obsidian-500">Organization Name</label>
+            <input className="w-full rounded-lg border border-obsidian-700 bg-obsidian-950 px-3 py-2 text-sm text-obsidian-100" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)} />
           </div>
           <div>
-            <label className="mb-1 block text-[11px] text-gray-500">Issuer Profile</label>
-            <input className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100" value={issuerProfile} onChange={(e) => setIssuerProfile(e.target.value)} />
+            <label className="mb-1 block text-[11px] text-obsidian-500">Issuer Profile</label>
+            <input className="w-full rounded-lg border border-obsidian-700 bg-obsidian-950 px-3 py-2 text-sm text-obsidian-100" value={issuerProfile} onChange={(e) => setIssuerProfile(e.target.value)} />
           </div>
           <div>
-            <label className="mb-1 block text-[11px] text-gray-500">Domain Mapping</label>
-            <input className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100" value={domainMapping} onChange={(e) => setDomainMapping(e.target.value)} />
+            <label className="mb-1 block text-[11px] text-obsidian-500">Domain Mapping</label>
+            <input className="w-full rounded-lg border border-obsidian-700 bg-obsidian-950 px-3 py-2 text-sm text-obsidian-100" value={domainMapping} onChange={(e) => setDomainMapping(e.target.value)} />
           </div>
           <div>
-            <label className="mb-1 block text-[11px] text-gray-500">Signer Verification</label>
-            <input className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100" value={signerVerification} onChange={(e) => setSignerVerification(e.target.value)} />
+            <label className="mb-1 block text-[11px] text-obsidian-500">Signer Verification</label>
+            <input className="w-full rounded-lg border border-obsidian-700 bg-obsidian-950 px-3 py-2 text-sm text-obsidian-100" value={signerVerification} onChange={(e) => setSignerVerification(e.target.value)} />
           </div>
           <div>
-            <label className="mb-1 block text-[11px] text-gray-500">Opened By</label>
-            <input className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100" value={openedBy} onChange={(e) => setOpenedBy(e.target.value)} />
+            <label className="mb-1 block text-[11px] text-obsidian-500">Opened By</label>
+            <input className="w-full rounded-lg border border-obsidian-700 bg-obsidian-950 px-3 py-2 text-sm text-obsidian-100" value={openedBy} onChange={(e) => setOpenedBy(e.target.value)} />
           </div>
           <button
-            className="mt-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
+            className="mt-2 rounded-lg bg-gold-500 px-4 py-2 text-xs font-semibold text-obsidian-100 transition-colors hover:bg-gold-400"
             onClick={async () => {
               try {
                 const out = await call("/api/v2/onboarding/request", {
@@ -133,12 +133,12 @@ export function OnboardingAdminPanel() {
       {step === 1 && (
         <div className="mt-4 space-y-2">
           <div>
-            <label className="mb-1 block text-[11px] text-gray-500">Onboarding ID</label>
-            <input className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100" value={onboardingId} onChange={(e) => setOnboardingId(e.target.value)} />
+            <label className="mb-1 block text-[11px] text-obsidian-500">Onboarding ID</label>
+            <input className="w-full rounded-lg border border-obsidian-700 bg-obsidian-950 px-3 py-2 text-sm text-obsidian-100" value={onboardingId} onChange={(e) => setOnboardingId(e.target.value)} />
           </div>
           <div className="flex gap-2">
             <button
-              className="rounded-lg bg-green-700/80 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-green-600"
+              className="rounded-lg bg-sage-700/80 px-4 py-2 text-xs font-semibold text-obsidian-100 transition-colors hover:bg-sage-600"
               onClick={async () => {
                 try {
                   setMessage(await call("/api/v2/onboarding/review", { onboarding_id: onboardingId, reviewed_by: openedBy, approve: true, review_note: "approved" }));
@@ -151,7 +151,7 @@ export function OnboardingAdminPanel() {
               Approve
             </button>
             <button
-              className="rounded-lg border border-red-700/60 px-4 py-2 text-xs text-red-300 transition-colors hover:bg-red-900/20"
+              className="rounded-lg border border-rose-700/60 px-4 py-2 text-xs text-rose-300 transition-colors hover:bg-rose-900/20"
               onClick={async () => {
                 try {
                   setMessage(await call("/api/v2/onboarding/review", { onboarding_id: onboardingId, reviewed_by: openedBy, approve: false, review_note: "rejected" }));
@@ -170,11 +170,11 @@ export function OnboardingAdminPanel() {
       {step === 2 && (
         <div className="mt-4 space-y-2">
           <div>
-            <label className="mb-1 block text-[11px] text-gray-500">Onboarding ID</label>
-            <input className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100" value={onboardingId} onChange={(e) => setOnboardingId(e.target.value)} />
+            <label className="mb-1 block text-[11px] text-obsidian-500">Onboarding ID</label>
+            <input className="w-full rounded-lg border border-obsidian-700 bg-obsidian-950 px-3 py-2 text-sm text-obsidian-100" value={onboardingId} onChange={(e) => setOnboardingId(e.target.value)} />
           </div>
           <button
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
+            className="rounded-lg bg-gold-500 px-4 py-2 text-xs font-semibold text-obsidian-100 transition-colors hover:bg-gold-400"
             onClick={async () => {
               try {
                 setMessage(await call("/api/v2/onboarding/activate", { onboarding_id: onboardingId, activated_by: openedBy }));
@@ -191,7 +191,7 @@ export function OnboardingAdminPanel() {
       {/* Summary button (always visible) */}
       <div className="mt-4">
         <button
-          className="rounded-lg border border-gray-700 px-3 py-2 text-xs text-gray-300 transition-colors hover:text-white hover:border-gray-500"
+          className="rounded-lg border border-obsidian-700 px-3 py-2 text-xs text-obsidian-300 transition-colors hover:text-obsidian-100 hover:border-obsidian-500"
           onClick={async () => {
             try { setMessage(await call("/api/v2/onboarding/summary")); }
             catch (e) { setMessage(e instanceof Error ? e.message : String(e)); }
@@ -203,9 +203,9 @@ export function OnboardingAdminPanel() {
 
       {/* Output card */}
       {message && (
-        <div className="mt-4 rounded-lg border border-gray-700/50 bg-gray-950/80 p-3">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-gray-500">Response</p>
-          <pre className="max-h-48 overflow-auto text-xs text-gray-300 whitespace-pre-wrap">{message}</pre>
+        <div className="mt-4 rounded-lg border border-obsidian-700/50 bg-obsidian-950/80 p-3">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-obsidian-500">Response</p>
+          <pre className="max-h-48 overflow-auto text-xs text-obsidian-300 whitespace-pre-wrap">{message}</pre>
         </div>
       )}
     </div>

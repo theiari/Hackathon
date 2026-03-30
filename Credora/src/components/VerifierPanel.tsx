@@ -73,34 +73,34 @@ export function VerifierPanel({
   };
 
   return (
-    <div className="rounded-2xl border border-gray-800/60 bg-gray-900/60">
-      <div className="border-b border-gray-800/40 px-5 py-4">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
-          <ShieldCheck className="h-4 w-4 text-indigo-400" />
+    <div className="rounded-2xl border border-obsidian-700/60 bg-obsidian-900/60">
+      <div className="border-b border-obsidian-700/40 px-7 py-5">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-obsidian-100">
+          <ShieldCheck className="h-4 w-4 text-gold-400" />
           Verify a Certificate
         </h3>
-        <p className="mt-0.5 text-xs text-gray-500">
+        <p className="mt-0.5 text-xs text-obsidian-500">
           Paste a certificate record ID to check authenticity in a normal browser. No wallet required.
         </p>
       </div>
 
-      <div className="space-y-4 px-5 py-5">
+      <div className="space-y-6 px-7 py-7">
         {/* Notarization ID */}
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-400">Certificate Record ID</label>
-          <p className="mb-1.5 text-[11px] text-gray-500">
+          <label className="mb-1 block text-xs font-medium text-obsidian-400">Certificate Record ID</label>
+          <p className="mb-1.5 text-[11px] text-obsidian-500">
             Paste the on-chain record ID from the issuer dashboard, holder view, QR code, or shared verification link.
           </p>
           <div className="flex gap-2">
             <input
-              className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+              className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30"
               placeholder="0x certificate record..."
               value={id}
               onChange={(e) => setId(e.target.value)}
             />
             {hasLastNotarization && (
               <button
-                className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-700/50 px-2 text-[11px] text-indigo-400 transition-colors hover:bg-indigo-600/10"
+                className="flex shrink-0 items-center gap-1 rounded-lg border border-obsidian-700/50 px-2 text-[11px] text-gold-400 transition-colors hover:bg-gold-800/10"
                 onClick={() => setId(getFlowValue("lastNotarizationId"))}
                 title="Auto-fill from last issuance"
               >
@@ -114,7 +114,7 @@ export function VerifierPanel({
         {/* Optional payload (collapsed) */}
         <div>
           <button
-            className="flex items-center gap-1.5 text-xs text-gray-500 transition-colors hover:text-gray-300"
+            className="flex items-center gap-1.5 text-xs text-obsidian-500 transition-colors hover:text-obsidian-300"
             onClick={() => setShowPayload((v) => !v)}
           >
             {showPayload ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -123,7 +123,7 @@ export function VerifierPanel({
           {showPayload && (
             <div className="mt-2">
               <input
-                className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+                className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30"
                 placeholder="Payload data for strict verification"
                 value={data}
                 onChange={(e) => setData(e.target.value)}
@@ -135,7 +135,7 @@ export function VerifierPanel({
         {/* Verify button */}
         <div className="flex gap-2">
           <button
-            className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:opacity-50"
+            className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-obsidian-100 transition-colors hover:bg-gold-400 disabled:opacity-50"
             disabled={loading || !id.trim()}
             onClick={() => void verifyNow()}
           >
@@ -143,7 +143,7 @@ export function VerifierPanel({
           </button>
           {result && (
             <button
-              className="flex items-center gap-1.5 rounded-lg border border-gray-700/50 px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:text-white"
+              className="flex items-center gap-1.5 rounded-lg border border-obsidian-700/50 px-4 py-2.5 text-sm font-medium text-obsidian-300 transition-colors hover:text-obsidian-100"
               onClick={() => void copyLink()}
             >
               <Link2 className="h-4 w-4" />
@@ -152,7 +152,7 @@ export function VerifierPanel({
           )}
           {result && (
             <button
-              className="flex items-center gap-1.5 rounded-lg border border-gray-700/50 px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:text-white"
+              className="flex items-center gap-1.5 rounded-lg border border-obsidian-700/50 px-4 py-2.5 text-sm font-medium text-obsidian-300 transition-colors hover:text-obsidian-100"
               onClick={() => setQrUrl(`${window.location.origin}?verify=${encodeURIComponent(id.trim())}`)}
             >
               <QrCode className="h-4 w-4" />
@@ -163,32 +163,32 @@ export function VerifierPanel({
 
         {/* Error */}
         {error && (
-          <div className="rounded-lg border border-red-800/40 bg-red-900/10 px-4 py-2.5 text-sm text-red-300">{error}</div>
+          <div className="rounded-lg border border-rose-800/40 bg-rose-900/10 px-4 py-2.5 text-sm text-rose-300">{error}</div>
         )}
 
         {/* Result */}
         {result && (
-          <div ref={verdictRef} className="rounded-xl border border-gray-800/40 bg-gray-800/10 p-4">
+          <div ref={verdictRef} className="rounded-xl border border-obsidian-700/40 bg-obsidian-800/10 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <StatusBadge status={result.status} />
-              <p className="text-[11px] text-gray-500">Checked: {result.checked_at}</p>
+              <p className="text-[11px] text-obsidian-500">Checked: {result.checked_at}</p>
             </div>
-            <p className="mt-2 text-sm text-gray-100">{result.summary}</p>
+            <p className="mt-2 text-sm text-obsidian-100">{result.summary}</p>
             <CredentialMetadataCard metadata={result.credential_metadata} className="mt-3" />
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-500">
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-obsidian-500">
               <span>ID: {result.id}</span>
               <span>Request: {result.request_id}</span>
               <span>Latency: {result.latency_ms}ms</span>
               <span>Cache: {result.cache_hit ? "hit" : "miss"}</span>
             </div>
             {result.reasons.length > 0 && (
-              <p className="mt-1 text-[11px] text-gray-500">Reasons: {result.reasons.join(", ")}</p>
+              <p className="mt-1 text-[11px] text-obsidian-500">Reasons: {result.reasons.join(", ")}</p>
             )}
           </div>
         )}
 
         {minimal && (
-          <p className="text-sm text-gray-500">Connect your wallet to issue certificates or open the holder view.</p>
+          <p className="text-sm text-obsidian-500">Connect your wallet to issue certificates or open the holder view.</p>
         )}
       </div>
       {qrUrl && <QrModal url={qrUrl} title="Certificate Verification Link" onClose={() => setQrUrl("")} />}

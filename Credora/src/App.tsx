@@ -22,10 +22,10 @@ const TABS = [
 
 function ConnectPrompt() {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-gray-700/50 bg-gray-900/60 px-8 py-12 text-center">
-      <Wallet className="h-10 w-10 text-gray-500" />
-      <p className="text-lg font-medium text-gray-300">Connect your wallet to continue</p>
-      <p className="text-sm text-gray-500">Use the connect button in the top-right corner.</p>
+    <div className="animate-fade-in-up flex flex-col items-center gap-4 rounded-2xl border border-obsidian-700/40 bg-obsidian-900/80 px-10 py-16 text-center">
+      <Wallet className="h-10 w-10 text-obsidian-500" />
+      <p className="text-lg font-semibold text-obsidian-200">Connect your wallet to continue</p>
+      <p className="text-sm text-obsidian-500">Use the connect button in the header.</p>
     </div>
   );
 }
@@ -81,12 +81,12 @@ function App() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-12">
+    <div className="credora-bg pb-16">
       <WalletHeader network={DEFAULT_NETWORK} />
 
       {/* Tab navigation */}
-      <nav className="sticky top-0 z-20 border-b border-gray-800/60 bg-gray-950/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center gap-1 overflow-x-auto px-4 py-2">
+      <nav className="sticky top-0 z-20 border-b border-obsidian-800/50 bg-obsidian-950/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-6 py-2.5">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.key;
@@ -94,7 +94,7 @@ function App() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${active ? "bg-indigo-600/20 text-indigo-300" : "text-gray-400 hover:bg-gray-800/60 hover:text-gray-200"}`}
+                className={`relative flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 ${active ? "nav-tab-active text-gold-400" : "text-obsidian-400 hover:bg-obsidian-800/40 hover:text-obsidian-200"}`}
               >
                 <Icon className="h-4 w-4" />
                 {tab.label}
@@ -105,7 +105,7 @@ function App() {
       </nav>
 
       {/* Main content */}
-      <main className="mx-auto mt-6 grid max-w-6xl gap-6 px-4">
+      <main className="mx-auto mt-8 grid max-w-7xl gap-8 px-6">
         {(activeTab === "home" || showPublicVerifyOnHome) && <LandingHero connected={Boolean(account)} onNavigate={setActiveTab} />}
 
         {showPublicVerifyOnHome && (

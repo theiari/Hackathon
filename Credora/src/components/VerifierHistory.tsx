@@ -36,28 +36,28 @@ export function VerifierHistory({ entries }: { entries: VerifyTimelineEntry[] })
   };
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 shadow-md">
-      <h3 className="text-xl font-semibold text-white">Verifier History</h3>
+    <div className="rounded-xl border border-obsidian-700 bg-obsidian-900 p-6 shadow-md">
+      <h3 className="text-xl font-semibold text-obsidian-100">Verifier History</h3>
       <div className="mt-4 grid gap-2 md:grid-cols-3">
-        <input className="border border-gray-700 rounded-lg px-3 py-2 bg-gray-950 text-sm text-gray-100" placeholder="Filter issuer" value={filterIssuer} onChange={(e) => setFilterIssuer(e.target.value)} />
-        <input className="border border-gray-700 rounded-lg px-3 py-2 bg-gray-950 text-sm text-gray-100" placeholder="Filter domain" value={filterDomain} onChange={(e) => setFilterDomain(e.target.value)} />
-        <input className="border border-gray-700 rounded-lg px-3 py-2 bg-gray-950 text-sm text-gray-100" placeholder="Filter status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} />
+        <input className="border border-obsidian-700 rounded-lg px-3 py-2 bg-obsidian-950 text-sm text-obsidian-100" placeholder="Filter issuer" value={filterIssuer} onChange={(e) => setFilterIssuer(e.target.value)} />
+        <input className="border border-obsidian-700 rounded-lg px-3 py-2 bg-obsidian-950 text-sm text-obsidian-100" placeholder="Filter domain" value={filterDomain} onChange={(e) => setFilterDomain(e.target.value)} />
+        <input className="border border-obsidian-700 rounded-lg px-3 py-2 bg-obsidian-950 text-sm text-obsidian-100" placeholder="Filter status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} />
       </div>
 
       <div className="mt-3 flex items-center justify-between">
-        <p className="text-xs text-gray-400">Results: {filtered.length} / {entries.length}</p>
-        <button className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700" onClick={exportJson}>Export JSON</button>
+        <p className="text-xs text-obsidian-400">Results: {filtered.length} / {entries.length}</p>
+        <button className="rounded-lg bg-gold-500 px-3 py-2 text-xs font-semibold text-obsidian-100 hover:bg-gold-700" onClick={exportJson}>Export JSON</button>
       </div>
 
       <div className="mt-4 space-y-3">
         {filtered.slice(0, 30).map((entry) => (
-          <div key={`${entry.response.request_id}-${entry.capturedAt}`} className="rounded-lg border border-gray-700 p-3">
+          <div key={`${entry.response.request_id}-${entry.capturedAt}`} className="rounded-lg border border-obsidian-700 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <StatusBadge status={entry.response.status} />
-              <span className="text-xs text-gray-400">{entry.capturedAt}</span>
+              <span className="text-xs text-obsidian-400">{entry.capturedAt}</span>
             </div>
-            <p className="mt-2 text-sm text-gray-200">{entry.response.summary}</p>
-            <p className="mt-1 text-xs text-gray-400">ID: {entry.response.id} • policy={entry.response.policy_version} • latency={entry.response.latency_ms}ms • cache={entry.response.cache_hit ? "hit" : "miss"}</p>
+            <p className="mt-2 text-sm text-obsidian-200">{entry.response.summary}</p>
+            <p className="mt-1 text-xs text-obsidian-400">ID: {entry.response.id} • policy={entry.response.policy_version} • latency={entry.response.latency_ms}ms • cache={entry.response.cache_hit ? "hit" : "miss"}</p>
           </div>
         ))}
       </div>

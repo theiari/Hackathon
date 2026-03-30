@@ -47,14 +47,14 @@ export function PresentationViewer({ token, onDismiss }: { token: string; onDism
   }, [payload?.timestamp]);
 
   if (loading) {
-    return <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 text-sm text-gray-300">Loading presentation...</div>;
+    return <div className="rounded-xl border border-obsidian-700 bg-obsidian-900 p-6 text-sm text-obsidian-300">Loading presentation...</div>;
   }
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-700 bg-red-900/30 p-6 text-sm text-red-200">
+      <div className="rounded-xl border border-rose-700 bg-rose-900/30 p-6 text-sm text-rose-200">
         <p>Failed to verify presentation: {error}</p>
-        <button className="mt-3 rounded-lg border border-red-500 px-3 py-2 text-xs" onClick={onDismiss}>
+        <button className="mt-3 rounded-lg border border-rose-500 px-3 py-2 text-xs" onClick={onDismiss}>
           Dismiss
         </button>
       </div>
@@ -66,11 +66,11 @@ export function PresentationViewer({ token, onDismiss }: { token: string; onDism
   }
 
   const bannerClass = payload.presentation_valid
-    ? "border-green-700 bg-green-900/30 text-green-200"
-    : "border-red-700 bg-red-900/30 text-red-200";
+    ? "border-sage-700 bg-sage-900/30 text-sage-200"
+    : "border-rose-700 bg-rose-900/30 text-rose-200";
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 shadow-md">
+    <div className="rounded-xl border border-obsidian-700 bg-obsidian-900 p-6 shadow-md">
       <div className={`rounded-lg border p-4 ${bannerClass}`}>
         <p className="text-sm font-semibold">🔏 Holder-Verified Presentation</p>
         <p className="mt-1 text-xs">
@@ -80,7 +80,7 @@ export function PresentationViewer({ token, onDismiss }: { token: string; onDism
         </p>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-gray-300">
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-obsidian-300">
         <span>Holder: {truncateAddress(payload.holder_address)}</span>
         <span>Signed: {signedAt}</span>
       </div>
@@ -89,12 +89,12 @@ export function PresentationViewer({ token, onDismiss }: { token: string; onDism
 
       <div className="mt-3 flex items-center justify-between gap-3">
         <StatusBadge status={payload.verdict.status} />
-        <button className="rounded-lg border border-gray-600 px-3 py-2 text-xs text-gray-200" onClick={onDismiss}>
+        <button className="rounded-lg border border-obsidian-600 px-3 py-2 text-xs text-obsidian-200" onClick={onDismiss}>
           Close presentation
         </button>
       </div>
 
-      <p className="mt-3 text-xs text-gray-500">
+      <p className="mt-3 text-xs text-obsidian-500">
         This presentation was signed by the holder's IOTA wallet and cannot be forged without the wallet key.
       </p>
     </div>

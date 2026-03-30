@@ -212,21 +212,21 @@ export function AaGovernancePanel({ onAaAccountCreated }: AaGovernancePanelProps
         : `${threshold}-of-${signerRows.length} multisig.`;
 
   return (
-    <section className="mt-6 rounded-xl border border-gray-800 bg-gray-900 p-6 shadow-md">
+    <section className="mt-6 rounded-xl border border-obsidian-700 bg-obsidian-900 p-6 shadow-md">
       <button
         className="flex w-full items-center justify-between text-left"
         onClick={() => setExpanded(!expanded)}
       >
         <div>
-          <span className="text-lg font-semibold text-white">
+          <span className="text-lg font-semibold text-obsidian-100">
             Advanced Governance (Account Abstraction) {expanded ? "▴" : "▾"}
           </span>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-obsidian-400">
             Enable k-of-n multisig for template publishing and revocation.
           </p>
         </div>
         {aaAccountId && (
-          <span className="flex items-center gap-1 text-xs text-green-400">
+          <span className="flex items-center gap-1 text-xs text-sage-400">
             <span className="inline-block h-2 w-2 rounded-full bg-green-400" /> AA active
           </span>
         )}
@@ -237,17 +237,17 @@ export function AaGovernancePanel({ onAaAccountCreated }: AaGovernancePanelProps
           {aaAccountId ? (
             <>
               {/* AA Active State */}
-              <div className="rounded-lg border border-green-700 bg-green-950/40 p-3 text-sm text-green-300">
+              <div className="rounded-lg border border-sage-700 bg-sage-950/40 p-3 text-sm text-sage-300">
                 AA Governance Active
               </div>
-              <div className="space-y-1 text-sm text-gray-300">
+              <div className="space-y-1 text-sm text-obsidian-300">
                 <p>
                   Account:{" "}
-                  <code className="rounded bg-gray-800 px-1 text-xs">
+                  <code className="rounded bg-obsidian-800 px-1 text-xs">
                     {aaAccountId.slice(0, 10)}...{aaAccountId.slice(-6)}
                   </code>
                   <button
-                    className="ml-2 text-xs text-indigo-400 hover:text-indigo-300"
+                    className="ml-2 text-xs text-gold-400 hover:text-gold-400"
                     onClick={() => navigator.clipboard.writeText(aaAccountId)}
                   >
                     Copy
@@ -258,23 +258,23 @@ export function AaGovernancePanel({ onAaAccountCreated }: AaGovernancePanelProps
                 </p>
               </div>
 
-              <hr className="border-gray-700" />
+              <hr className="border-obsidian-700" />
 
               {/* Transfer DomainAdminCap */}
               <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-indigo-300">
+                <h4 className="text-sm font-semibold text-gold-400">
                   Step 2 — Transfer DomainAdminCap to AA Account
                 </h4>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-obsidian-400">
                   Once transferred, all governance actions go through the AA account and require{" "}
                   {aaThreshold}-of-{aaSignerCount} approval.
                 </p>
-                <label className="block text-xs text-gray-300">
+                <label className="block text-xs text-obsidian-300">
                   DomainAdminCap ID{" "}
                   <InfoHint text="Find your DomainAdminCap ID in the Issue tab after creating a domain, or in the IssuerDashboard." />
                 </label>
                 <input
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100"
+                  className="w-full rounded-lg border border-obsidian-700 bg-obsidian-800 px-3 py-2 text-sm text-obsidian-100"
                   placeholder="0x..."
                   value={capId}
                   onChange={(e) => setCapId(e.target.value)}
@@ -287,7 +287,7 @@ export function AaGovernancePanel({ onAaAccountCreated }: AaGovernancePanelProps
               </div>
 
               <button
-                className="mt-2 text-xs text-gray-500 hover:text-gray-300"
+                className="mt-2 text-xs text-obsidian-500 hover:text-obsidian-300"
                 onClick={resetAa}
               >
                 Reset AA account
@@ -296,10 +296,10 @@ export function AaGovernancePanel({ onAaAccountCreated }: AaGovernancePanelProps
           ) : (
             <>
               {/* Create AA Account */}
-              <h4 className="text-sm font-semibold text-indigo-300">
+              <h4 className="text-sm font-semibold text-gold-400">
                 Create Multi-Signer Governance Account
               </h4>
-              <div className="rounded-lg border border-indigo-800 bg-indigo-950 p-4 text-sm text-gray-300">
+              <div className="rounded-lg border border-gold-700 bg-gold-800 p-4 text-sm text-obsidian-300">
                 An Account Abstraction account is a shared on-chain object that owns your
                 DomainAdminCap. Template publishing and on-chain revocation require cryptographic
                 approval from k-of-n registered signers — no backend trust needed.
@@ -307,11 +307,11 @@ export function AaGovernancePanel({ onAaAccountCreated }: AaGovernancePanelProps
 
               {/* Signer table */}
               <div className="space-y-2">
-                <label className="block text-xs font-semibold text-gray-300">Signers</label>
+                <label className="block text-xs font-semibold text-obsidian-300">Signers</label>
                 {signerRows.map((row, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <input
-                      className="w-40 rounded-lg border border-gray-700 bg-gray-800 px-2 py-1 text-sm text-gray-100"
+                      className="w-40 rounded-lg border border-obsidian-700 bg-obsidian-800 px-2 py-1 text-sm text-obsidian-100"
                       placeholder={idx === 0 ? "Alice" : "Board Member"}
                       value={row.label}
                       onChange={(e) => {
@@ -321,7 +321,7 @@ export function AaGovernancePanel({ onAaAccountCreated }: AaGovernancePanelProps
                       }}
                     />
                     <input
-                      className="flex-1 rounded-lg border border-gray-700 bg-gray-800 px-2 py-1 font-mono text-xs text-gray-100"
+                      className="flex-1 rounded-lg border border-obsidian-700 bg-obsidian-800 px-2 py-1 font-mono text-xs text-obsidian-100"
                       placeholder="32-byte Ed25519 key in hex (64 chars)"
                       value={row.pubkeyHex}
                       maxLength={64}
@@ -332,7 +332,7 @@ export function AaGovernancePanel({ onAaAccountCreated }: AaGovernancePanelProps
                       }}
                     />
                     <button
-                      className="text-xs text-red-400 hover:text-red-300 disabled:opacity-30"
+                      className="text-xs text-rose-400 hover:text-rose-300 disabled:opacity-30"
                       disabled={signerRows.length <= 1}
                       onClick={() => setSignerRows((prev) => prev.filter((_, i) => i !== idx))}
                     >
@@ -342,7 +342,7 @@ export function AaGovernancePanel({ onAaAccountCreated }: AaGovernancePanelProps
                 ))}
                 {signerRows.length < 5 && (
                   <button
-                    className="text-xs text-indigo-400 hover:text-indigo-300"
+                    className="text-xs text-gold-400 hover:text-gold-400"
                     onClick={() => setSignerRows((prev) => [...prev, { label: "", pubkeyHex: "" }])}
                   >
                     + Add signer
@@ -353,15 +353,15 @@ export function AaGovernancePanel({ onAaAccountCreated }: AaGovernancePanelProps
               {/* Extract from wallet helper */}
               <div className="space-y-1">
                 <button
-                  className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-xs text-gray-200 hover:bg-gray-700"
+                  className="rounded-lg border border-obsidian-700 bg-obsidian-800 px-3 py-1.5 text-xs text-obsidian-200 hover:bg-obsidian-700"
                   onClick={extractPubkey}
                 >
                   Extract my public key →
                 </button>
                 {extractedKey && (
-                  <p className="text-xs text-green-400">Extracted: {extractedKey.slice(0, 16)}...</p>
+                  <p className="text-xs text-sage-400">Extracted: {extractedKey.slice(0, 16)}...</p>
                 )}
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-obsidian-500">
                   Share this page with other signers and have them click &quot;Extract my public key
                   →&quot; with their wallets to fill in their keys.
                 </p>
@@ -369,24 +369,24 @@ export function AaGovernancePanel({ onAaAccountCreated }: AaGovernancePanelProps
 
               {/* Threshold selector */}
               <div className="space-y-1">
-                <label className="block text-xs text-gray-300">
+                <label className="block text-xs text-obsidian-300">
                   Signatures required (k of {signerRows.length})
                 </label>
                 <input
                   type="number"
-                  className="w-24 rounded-lg border border-gray-700 bg-gray-800 px-2 py-1 text-sm text-gray-100"
+                  className="w-24 rounded-lg border border-obsidian-700 bg-obsidian-800 px-2 py-1 text-sm text-obsidian-100"
                   min={1}
                   max={signerRows.length}
                   step={1}
                   value={threshold}
                   onChange={(e) => setThreshold(Math.max(1, Math.min(signerRows.length, Number(e.target.value))))}
                 />
-                <p className="text-xs text-gray-400">{thresholdHint}</p>
+                <p className="text-xs text-obsidian-400">{thresholdHint}</p>
               </div>
 
               {/* Validation warning for missing metadata ID */}
               {!packageMetadataId && (
-                <div className="rounded-lg border border-yellow-700 bg-yellow-950/40 p-2 text-xs text-yellow-300">
+                <div className="rounded-lg border border-gold-700 bg-gold-950/40 p-2 text-xs text-gold-300">
                   VITE_PACKAGE_METADATA_ID is not set in .env. Run redeploy and set this variable
                   first.
                 </div>
@@ -398,13 +398,13 @@ export function AaGovernancePanel({ onAaAccountCreated }: AaGovernancePanelProps
                   Create AA Account
                 </TxButton>
               </span>
-              <p className="text-[10px] text-amber-300/60">Note: Browser wallets don't yet support AA transactions. The on-chain module is deployed and ready.</p>
+              <p className="text-[10px] text-gold-300/60">Note: Browser wallets don't yet support AA transactions. The on-chain module is deployed and ready.</p>
             </>
           )}
 
           {message && (
             <p
-              className={`mt-2 text-sm ${message.startsWith("AA account created") || message.startsWith("DomainAdminCap transferred") || message.startsWith("Extracted") ? "text-green-400" : "text-yellow-300"}`}
+              className={`mt-2 text-sm ${message.startsWith("AA account created") || message.startsWith("DomainAdminCap transferred") || message.startsWith("Extracted") ? "text-sage-400" : "text-gold-300"}`}
             >
               {message}
             </p>

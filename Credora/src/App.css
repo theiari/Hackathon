@@ -1,1 +1,264 @@
 @import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════
+   CREDORA — Design System
+   Aesthetic: Swiss luxury minimal · dark obsidian + warm gold
+   Font: Satoshi (geometric sans with character)
+   ═══════════════════════════════════════════════════════════ */
+
+@theme {
+  --color-obsidian-950: #08090c;
+  --color-obsidian-900: #0e1117;
+  --color-obsidian-850: #131720;
+  --color-obsidian-800: #1a1f2e;
+  --color-obsidian-700: #252b3d;
+  --color-obsidian-600: #353d54;
+  --color-obsidian-500: #4a5472;
+  --color-obsidian-400: #6b7494;
+  --color-obsidian-300: #9099b3;
+  --color-obsidian-200: #b8bfcf;
+  --color-obsidian-100: #dde1ea;
+  --color-obsidian-50: #f0f2f6;
+
+  --color-gold-500: #c9a84c;
+  --color-gold-400: #dabb63;
+  --color-gold-300: #e8ce82;
+  --color-gold-200: #f0dfa6;
+  --color-gold-100: #faf3dc;
+  --color-gold-600: #a88b35;
+  --color-gold-700: #7d6726;
+  --color-gold-800: #544519;
+
+  --color-sage-500: #5ca570;
+  --color-sage-400: #73b886;
+  --color-sage-300: #94cba3;
+  --color-sage-900: #132b1a;
+  --color-sage-800: #1a3822;
+
+  --color-rose-500: #c75b5b;
+  --color-rose-400: #d47272;
+  --color-rose-300: #e09494;
+  --color-rose-900: #2b1313;
+  --color-rose-800: #381a1a;
+}
+
+/* ── Global base ── */
+:root {
+  --surface-base: var(--color-obsidian-950);
+  --surface-raised: var(--color-obsidian-900);
+  --surface-overlay: var(--color-obsidian-850);
+  --border-subtle: color-mix(in srgb, var(--color-obsidian-700) 50%, transparent);
+  --border-default: color-mix(in srgb, var(--color-obsidian-600) 60%, transparent);
+  --accent: var(--color-gold-500);
+  --accent-muted: color-mix(in srgb, var(--color-gold-500) 15%, transparent);
+  --accent-text: var(--color-gold-400);
+  --text-primary: var(--color-obsidian-100);
+  --text-secondary: var(--color-obsidian-400);
+  --text-tertiary: var(--color-obsidian-500);
+  --radius-panel: 16px;
+  --radius-control: 10px;
+  --radius-pill: 9999px;
+}
+
+body {
+  font-family: 'Satoshi', system-ui, -apple-system, sans-serif;
+  background: var(--surface-base);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Atmosphere background ── */
+.credora-bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in srgb, var(--color-gold-500) 4%, transparent), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 110%, color-mix(in srgb, var(--color-gold-700) 3%, transparent), transparent),
+    var(--surface-base);
+  min-height: 100vh;
+}
+
+/* ── Panel cards ── */
+.panel {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-panel);
+  transition: border-color 0.2s ease;
+}
+.panel:hover {
+  border-color: var(--border-default);
+}
+.panel-header {
+  padding: 1.25rem 1.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.panel-body {
+  padding: 1.75rem;
+}
+
+/* ── Inputs ── */
+.credora-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.credora-input::placeholder {
+  color: var(--text-tertiary);
+}
+.credora-input:focus {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* ── Buttons ── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-obsidian-950);
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+.btn-primary:hover {
+  background: var(--color-gold-400);
+}
+.btn-primary:active {
+  transform: scale(0.98);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-ghost:hover {
+  color: var(--text-primary);
+  border-color: var(--border-default);
+  background: var(--surface-overlay);
+}
+
+/* ── Label & helper ── */
+.field-label {
+  display: block;
+  margin-bottom: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.field-hint {
+  margin-bottom: 0.5rem;
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+/* ── Animations ── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes subtlePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 6%, transparent), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2.5s ease-in-out infinite;
+}
+
+.animate-subtle-pulse {
+  animation: subtlePulse 2s ease-in-out infinite;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-obsidian-700);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-obsidian-600);
+}
+
+/* ── Nav tab active indicator ── */
+.nav-tab-active {
+  position: relative;
+}
+.nav-tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+/* ── Radix overrides ── */
+.radix-themes {
+  --color-background: var(--surface-base) !important;
+}
+
+/* ── Connect button override ── */
+[data-dapp-kit] button {
+  font-family: 'Satoshi', system-ui, sans-serif !important;
+  border-radius: var(--radius-control) !important;
+}

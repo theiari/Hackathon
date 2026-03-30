@@ -470,22 +470,22 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
   };
 
   return (
-    <div className="rounded-2xl border border-gray-800/60 bg-gray-900/60">
-      <div className="border-b border-gray-800/40 px-5 py-4">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
-          <Send className="h-4 w-4 text-indigo-400" />
+    <div className="rounded-2xl border border-obsidian-700/60 bg-obsidian-900/60">
+      <div className="border-b border-obsidian-700/40 px-7 py-5">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-obsidian-100">
+          <Send className="h-4 w-4 text-gold-400" />
           Issue Certificates
         </h3>
-        <p className="mt-0.5 text-xs text-gray-500">Create immutable university certificates. Private fields are hashed before submission.</p>
-        <div className="mt-3 flex gap-1 rounded-lg bg-gray-800/50 p-0.5">
+        <p className="mt-0.5 text-xs text-obsidian-500">Create immutable university certificates. Private fields are hashed before submission.</p>
+        <div className="mt-3 flex gap-1 rounded-lg bg-obsidian-800/50 p-0.5">
           <button
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${!batchMode ? "bg-indigo-600/30 text-indigo-200" : "text-gray-400 hover:text-gray-200"}`}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${!batchMode ? "bg-gold-700/20 text-gold-300" : "text-obsidian-400 hover:text-obsidian-200"}`}
             onClick={() => { setBatchMode(false); setBatchProgress(null); }}
           >
             <User className="h-3 w-3" /> Single
           </button>
           <button
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${batchMode ? "bg-indigo-600/30 text-indigo-200" : "text-gray-400 hover:text-gray-200"}`}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${batchMode ? "bg-gold-700/20 text-gold-300" : "text-obsidian-400 hover:text-obsidian-200"}`}
             onClick={() => { setBatchMode(true); setBatchProgress(null); }}
           >
             <Users className="h-3 w-3" /> Batch
@@ -493,18 +493,18 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
         </div>
       </div>
 
-      <div className="space-y-4 px-5 py-5">
+      <div className="space-y-6 px-7 py-7">
         {/* Domain & Template IDs */}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-400">Institution Domain ID</label>
-            <p className="mb-1.5 text-[11px] text-gray-500">
+            <label className="mb-1 block text-xs font-medium text-obsidian-400">Institution Domain ID</label>
+            <p className="mb-1.5 text-[11px] text-obsidian-500">
               {hasDomain ? `Using: ${truncateId(domainId)}` : "The institution profile this certificate will be issued under"}
             </p>
             <div className="flex gap-2">
-              <input className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30" placeholder="0x..." value={domainId} onChange={(e) => setDomainId(e.target.value)} />
+              <input className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30" placeholder="0x..." value={domainId} onChange={(e) => setDomainId(e.target.value)} />
               {hasLastDomain && (
-                <button className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-700/50 px-2 text-[11px] text-indigo-400 transition-colors hover:bg-indigo-600/10" onClick={() => setDomainId(getFlowValue("lastDomainId"))} title="Auto-fill from last transaction">
+                <button className="flex shrink-0 items-center gap-1 rounded-lg border border-obsidian-700/50 px-2 text-[11px] text-gold-400 transition-colors hover:bg-gold-800/10" onClick={() => setDomainId(getFlowValue("lastDomainId"))} title="Auto-fill from last transaction">
                   <ArrowDownLeft className="h-3 w-3" />
                   Auto
                 </button>
@@ -512,14 +512,14 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-400">Certificate Template ID</label>
-            <p className="mb-1.5 text-[11px] text-gray-500">
+            <label className="mb-1 block text-xs font-medium text-obsidian-400">Certificate Template ID</label>
+            <p className="mb-1.5 text-[11px] text-obsidian-500">
               {hasTemplate ? `Using: ${truncateId(templateId)}` : "The published certificate template to issue from"}
             </p>
             <div className="flex gap-2">
-              <input className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30" placeholder="0x..." value={templateId} onChange={(e) => setTemplateId(e.target.value)} />
+              <input className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30" placeholder="0x..." value={templateId} onChange={(e) => setTemplateId(e.target.value)} />
               {hasLastTemplate && (
-                <button className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-700/50 px-2 text-[11px] text-indigo-400 transition-colors hover:bg-indigo-600/10" onClick={() => setTemplateId(getFlowValue("lastTemplateId"))} title="Auto-fill from last transaction">
+                <button className="flex shrink-0 items-center gap-1 rounded-lg border border-obsidian-700/50 px-2 text-[11px] text-gold-400 transition-colors hover:bg-gold-800/10" onClick={() => setTemplateId(getFlowValue("lastTemplateId"))} title="Auto-fill from last transaction">
                   <ArrowDownLeft className="h-3 w-3" />
                   Auto
                 </button>
@@ -530,36 +530,36 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
 
         {/* Description */}
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-400">Certificate Title Or Note</label>
-          <p className="mb-1.5 text-[11px] text-gray-500">An immutable note stored with the issued record.</p>
-          <input className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30" placeholder="e.g. Bachelor of Science certificate for Alice Rossi" value={immutableDescription} onChange={(e) => setImmutableDescription(e.target.value)} />
+          <label className="mb-1 block text-xs font-medium text-obsidian-400">Certificate Title Or Note</label>
+          <p className="mb-1.5 text-[11px] text-obsidian-500">An immutable note stored with the issued record.</p>
+          <input className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30" placeholder="e.g. Bachelor of Science certificate for Alice Rossi" value={immutableDescription} onChange={(e) => setImmutableDescription(e.target.value)} />
         </div>
 
         {/* Expiry & Transferable */}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-400">Expiry Date</label>
-            <p className="mb-1.5 text-[11px] text-gray-500">Leave empty for degrees or certificates that never expire</p>
-            <input type="date" className="w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
+            <label className="mb-1 block text-xs font-medium text-obsidian-400">Expiry Date</label>
+            <p className="mb-1.5 text-[11px] text-obsidian-500">Leave empty for degrees or certificates that never expire</p>
+            <input type="date" className="w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
           </div>
           <div className="flex items-end pb-1">
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-700/60 bg-gray-800/30 px-4 py-2.5 text-sm text-gray-200 transition-colors hover:border-gray-600">
-              <input type="checkbox" className="accent-indigo-500" checked={transferable} onChange={(e) => setTransferable(e.target.checked)} />
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-obsidian-700/60 bg-obsidian-800/30 px-4 py-2.5 text-sm text-obsidian-200 transition-colors hover:border-obsidian-600">
+              <input type="checkbox" className="accent-gold-500" checked={transferable} onChange={(e) => setTransferable(e.target.checked)} />
               Allow holder transfer (advanced)
             </label>
           </div>
         </div>
 
         {/* Tags */}
-        <div className="rounded-xl border border-gray-800/40 bg-gray-800/10 p-3">
-          <p className="mb-2 text-xs font-medium text-gray-400">Tags</p>
+        <div className="rounded-xl border border-obsidian-700/40 bg-obsidian-800/10 p-3">
+          <p className="mb-2 text-xs font-medium text-obsidian-400">Tags</p>
           <div className="flex flex-wrap gap-1.5">
             {PRESET_TAGS.map((tag) => {
               const active = selectedPresetTags.includes(tag);
               return (
                 <button
                   key={tag}
-                  className={`rounded-full px-3 py-1 text-xs transition-colors ${active ? "bg-indigo-600/30 text-indigo-200 ring-1 ring-indigo-500/40" : "bg-gray-800/60 text-gray-400 hover:text-gray-200"}`}
+                  className={`rounded-full px-3 py-1 text-xs transition-colors ${active ? "bg-gold-700/20 text-gold-300 ring-1 ring-gold-500/40" : "bg-obsidian-800/60 text-obsidian-400 hover:text-obsidian-200"}`}
                   onClick={() => toggleTag(tag)}
                 >
                   {tag}
@@ -568,18 +568,18 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
             })}
           </div>
           <div className="mt-2 flex items-center gap-2">
-            <input className="w-32 rounded-lg border border-gray-700/60 bg-gray-800/50 px-2.5 py-1.5 text-xs text-gray-100 placeholder:text-gray-600" placeholder="Custom tag" maxLength={20} value={customTagInput} onChange={(e) => setCustomTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addCustomTag(); }} />
-            <button className="flex items-center gap-1 rounded border border-gray-700/50 px-2 py-1.5 text-xs text-gray-300 transition-colors hover:text-white" onClick={addCustomTag}>
+            <input className="w-32 rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-2.5 py-1.5 text-xs text-obsidian-100 placeholder:text-obsidian-500" placeholder="Custom tag" maxLength={20} value={customTagInput} onChange={(e) => setCustomTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addCustomTag(); }} />
+            <button className="flex items-center gap-1 rounded border border-obsidian-700/50 px-2 py-1.5 text-xs text-obsidian-300 transition-colors hover:text-obsidian-100" onClick={addCustomTag}>
               <Plus className="h-3 w-3" /> Add
             </button>
-            <span className="text-[10px] text-gray-600">{selectedTags.length}/6</span>
+            <span className="text-[10px] text-obsidian-600">{selectedTags.length}/6</span>
           </div>
           {customTags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {customTags.map((tag) => (
-                <span key={tag} className="flex items-center gap-1 rounded-full border border-gray-700/50 bg-gray-800/40 px-2.5 py-1 text-xs text-gray-200">
+                <span key={tag} className="flex items-center gap-1 rounded-full border border-obsidian-700/50 bg-obsidian-800/40 px-2.5 py-1 text-xs text-obsidian-200">
                   {tag}
-                  <button className="text-gray-500 hover:text-red-400" onClick={() => setCustomTags((prev) => prev.filter((t) => t !== tag))}>
+                  <button className="text-obsidian-500 hover:text-rose-400" onClick={() => setCustomTags((prev) => prev.filter((t) => t !== tag))}>
                     <X className="h-3 w-3" />
                   </button>
                 </span>
@@ -591,10 +591,10 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
         {/* Template Fields */}
         {templateFields.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-gray-400">
-              Template Fields <span className="text-gray-600">({templateType})</span>
+            <p className="text-xs font-medium text-obsidian-400">
+              Template Fields <span className="text-obsidian-600">({templateType})</span>
             </p>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-[11px] text-obsidian-500">
               Choose what verifiers can read directly. Private fields are SHA-256 hashed before anchoring.
             </p>
             <div className="space-y-2">
@@ -602,25 +602,25 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
                 const current = values[field.name] ?? { value: "", privacy: "private" as const };
                 const isPrivate = current.privacy === "private";
                 return (
-                  <div key={field.name} className="rounded-xl border border-gray-800/40 bg-gray-800/10 p-3">
+                  <div key={field.name} className="rounded-xl border border-obsidian-700/40 bg-obsidian-800/10 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-100">{field.name}</p>
-                        {field.required && <span className="rounded bg-red-900/40 px-1.5 py-0.5 text-[10px] font-medium text-red-300">Required</span>}
+                        <p className="text-sm font-medium text-obsidian-100">{field.name}</p>
+                        {field.required && <span className="rounded bg-rose-900/40 px-1.5 py-0.5 text-[10px] font-medium text-rose-300">Required</span>}
                       </div>
                       <button
-                        className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors ${isPrivate ? "bg-gray-800/60 text-gray-300" : "bg-indigo-600/20 text-indigo-300"}`}
+                        className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors ${isPrivate ? "bg-obsidian-800/60 text-obsidian-300" : "bg-gold-800/20 text-gold-400"}`}
                         onClick={() => setValues((prev) => ({ ...prev, [field.name]: { ...current, privacy: isPrivate ? "public" : "private" } }))}
                       >
                         {isPrivate ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
                         {isPrivate ? "Private" : "Public"}
                       </button>
                     </div>
-                    {field.description && <p className="mt-1 text-[11px] text-gray-500">{field.description}</p>}
+                    {field.description && <p className="mt-1 text-[11px] text-obsidian-500">{field.description}</p>}
                     <input
                       type={field.field_type === 1 ? "number" : "text"}
                       placeholder={field.field_type === 3 ? "0x..." : "Value"}
-                      className="mt-2 w-full rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+                      className="mt-2 w-full rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 placeholder:text-obsidian-500 focus:border-gold-600/50 focus:outline-none focus:ring-1 focus:ring-gold-500/30"
                       value={current.value}
                       onChange={(e) => setValues((prev) => ({ ...prev, [field.name]: { ...current, value: e.target.value } }))}
                     />
@@ -633,7 +633,7 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
                       if (field.max_value) hints.push(`≤ ${field.max_value}`);
                       if (field.pattern_hint) hints.push(`format: ${field.pattern_hint}`);
                       return hints.length > 0 ? (
-                        <p className="mt-1 text-[10px] text-gray-500">{hints.join(" · ")}</p>
+                        <p className="mt-1 text-[10px] text-obsidian-500">{hints.join(" · ")}</p>
                       ) : null;
                     })()}
                   </div>
@@ -645,36 +645,36 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
 
         {/* Batch count input */}
         {batchMode && (
-          <div className="rounded-xl border border-indigo-800/30 bg-indigo-900/10 p-4">
-            <p className="mb-2 text-xs font-medium text-indigo-300">Batch Issuance</p>
-            <p className="mb-3 text-[11px] text-gray-500">
+          <div className="rounded-xl border border-gold-700/30 bg-gold-900/10 p-4">
+            <p className="mb-2 text-xs font-medium text-gold-400">Batch Issuance</p>
+            <p className="mb-3 text-[11px] text-obsidian-500">
               Issue multiple identical certificate records to your wallet for demos or staged delivery. Each record is a separate on-chain object.
               Per-student distribution is the next product upgrade.
             </p>
             <div className="flex items-center gap-3">
-              <label className="text-xs text-gray-400">Number of certificates:</label>
+              <label className="text-xs text-obsidian-400">Number of certificates:</label>
               <input
                 type="number"
                 min={1}
                 max={20}
-                className="w-20 rounded-lg border border-gray-700/60 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:border-indigo-500/50 focus:outline-none"
+                className="w-20 rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-4 py-2.5 text-sm text-obsidian-100 focus:border-gold-600/50 focus:outline-none"
                 value={batchCount}
                 onChange={(e) => setBatchCount(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
               />
-              <span className="text-[10px] text-gray-500">(max 20)</span>
+              <span className="text-[10px] text-obsidian-500">(max 20)</span>
             </div>
           </div>
         )}
 
         {/* Batch progress */}
         {batchProgress && (
-          <div className="rounded-xl border border-gray-800/40 bg-gray-800/10 p-4">
-            <p className="mb-2 text-xs font-medium text-gray-300">
+          <div className="rounded-xl border border-obsidian-700/40 bg-obsidian-800/10 p-4">
+            <p className="mb-2 text-xs font-medium text-obsidian-300">
               Batch Certificate Progress — {batchProgress.current}/{batchProgress.total}
             </p>
-            <div className="mb-3 h-2 overflow-hidden rounded-full bg-gray-700/50">
+            <div className="mb-3 h-2 overflow-hidden rounded-full bg-obsidian-700/50">
               <div
-                className="h-full rounded-full bg-indigo-500 transition-all duration-300"
+                className="h-full rounded-full bg-gold-400 transition-all duration-300"
                 style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
               />
             </div>
@@ -685,15 +685,15 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
                 return (
                   <div key={i} className="flex items-center gap-2 text-xs">
                     {result?.status === "success" ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-sage-400" />
                     ) : result?.status === "error" ? (
-                      <AlertCircle className="h-3.5 w-3.5 text-red-400" />
+                      <AlertCircle className="h-3.5 w-3.5 text-rose-400" />
                     ) : isCurrent ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-gold-400" />
                     ) : (
-                      <span className="inline-block h-3.5 w-3.5 rounded-full border border-gray-700" />
+                      <span className="inline-block h-3.5 w-3.5 rounded-full border border-obsidian-700" />
                     )}
-                    <span className={result?.status === "success" ? "text-green-300" : result?.status === "error" ? "text-red-300" : isCurrent ? "text-indigo-300" : "text-gray-500"}>
+                    <span className={result?.status === "success" ? "text-sage-300" : result?.status === "error" ? "text-rose-300" : isCurrent ? "text-gold-400" : "text-obsidian-500"}>
                       Certificate #{i + 1}
                       {result?.status === "success" && result.id ? ` — ${truncateId(result.id)}` : ""}
                       {result?.status === "error" ? ` — ${result.error}` : ""}
@@ -709,7 +709,7 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
         <div className="flex items-center gap-3">
           {batchMode ? (
             <button
-              className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:opacity-50"
+              className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-obsidian-100 transition-colors hover:bg-gold-400 disabled:opacity-50"
               disabled={batchProgress !== null && batchProgress.current < batchProgress.total}
               onClick={() => void executeBatch()}
             >
@@ -730,10 +730,10 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
 
         {/* Status message */}
         {message && (
-          <div className={`rounded-lg px-4 py-2.5 text-xs ${message.includes("issued") || message.includes("created") || message.includes("registered") || message.includes("Certificate") || message.includes("Notarization") ? "border border-green-800/40 bg-green-900/10 text-green-300" : "border border-gray-800/40 bg-gray-800/20 text-gray-400"}`}>
+          <div className={`rounded-lg px-4 py-2.5 text-xs ${message.includes("issued") || message.includes("created") || message.includes("registered") || message.includes("Certificate") || message.includes("Notarization") ? "border border-sage-800/40 bg-sage-900/10 text-sage-300" : "border border-obsidian-700/40 bg-obsidian-800/20 text-obsidian-400"}`}>
             <span>{message}</span>
             {lastIssuedId && onNavigateToVerify && (
-              <button className="ml-3 rounded bg-indigo-600/80 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-indigo-600" onClick={() => onNavigateToVerify(lastIssuedId)}>
+              <button className="ml-3 rounded bg-gold-500/80 px-2 py-0.5 text-[11px] font-semibold text-obsidian-100 hover:bg-gold-500" onClick={() => onNavigateToVerify(lastIssuedId)}>
                 Verify it →
               </button>
             )}
@@ -742,8 +742,8 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
 
         {/* Debug trace (collapsed by default) */}
         {debugEntries.length > 0 && (
-          <div className="border-t border-gray-800/40 pt-3">
-            <button className="flex items-center gap-1.5 text-xs text-gray-500 transition-colors hover:text-gray-300" onClick={() => setShowDebug((v) => !v)}>
+          <div className="border-t border-obsidian-700/40 pt-3">
+            <button className="flex items-center gap-1.5 text-xs text-obsidian-500 transition-colors hover:text-obsidian-300" onClick={() => setShowDebug((v) => !v)}>
               {showDebug ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
               <Bug className="h-3.5 w-3.5" />
               Debug trace ({debugEntries.length})
@@ -751,7 +751,7 @@ export function IssuerPanel({ onIssued, onNavigateToVerify }: { onIssued?: () =>
             {showDebug && (
               <div className="mt-2 space-y-2">
                 {debugEntries.map((entry, index) => (
-                  <pre key={`${entry.at}-${index}`} className="overflow-x-auto rounded-lg border border-amber-900/30 bg-black/30 p-2 text-[11px] text-amber-200/80">
+                  <pre key={`${entry.at}-${index}`} className="overflow-x-auto rounded-lg border border-gold-900/30 bg-black/30 p-2 text-[11px] text-gold-200/80">
 {JSON.stringify(entry, null, 2)}
                   </pre>
                 ))}

@@ -187,28 +187,28 @@ export function HolderView({
 
   if (!address) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-gray-700/50 bg-gray-900/60 px-8 py-12 text-center">
-        <Wallet className="h-10 w-10 text-gray-500" />
-        <p className="text-lg font-medium text-gray-300">My Certificates</p>
-        <p className="text-sm text-gray-500">Connect your wallet to see certificates issued to you.</p>
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-obsidian-700/50 bg-obsidian-900/60 px-8 py-12 text-center">
+        <Wallet className="h-10 w-10 text-obsidian-500" />
+        <p className="text-lg font-medium text-obsidian-300">My Certificates</p>
+        <p className="text-sm text-obsidian-500">Connect your wallet to see certificates issued to you.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-gray-800/60 bg-gray-900/60">
+    <div className="rounded-2xl border border-obsidian-700/60 bg-obsidian-900/60">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800/40 px-5 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-obsidian-700/40 px-7 py-5">
         <div>
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
-            <Wallet className="h-4 w-4 text-indigo-400" />
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-obsidian-100">
+            <Wallet className="h-4 w-4 text-gold-400" />
             My Certificates
           </h3>
-          <p className="mt-0.5 text-[11px] text-gray-500">Copy a verification link for employers or generate a holder-signed proof.</p>
-          <p className="mt-0.5 text-[11px] text-gray-500">Wallet: {addressLabel}</p>
+          <p className="mt-0.5 text-[11px] text-obsidian-500">Copy a verification link for employers or generate a holder-signed proof.</p>
+          <p className="mt-0.5 text-[11px] text-obsidian-500">Wallet: {addressLabel}</p>
         </div>
         <button
-          className="flex items-center gap-1.5 rounded-lg border border-gray-700/50 px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-gray-800/60 hover:text-white"
+          className="flex items-center gap-1.5 rounded-lg border border-obsidian-700/50 px-4 py-2.5 text-xs font-medium text-obsidian-300 transition-colors hover:bg-obsidian-800/60 hover:text-obsidian-100"
           onClick={() => void refresh()}
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -216,21 +216,21 @@ export function HolderView({
         </button>
       </div>
 
-      <div className="px-5 py-5">
+      <div className="px-7 py-7">
         {/* Loading skeletons */}
         {loading && !credentials.length && (
           <div className="grid gap-3 sm:grid-cols-2">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-32 animate-pulse rounded-xl border border-gray-800/30 bg-gray-800/20" />
+              <div key={i} className="h-32 animate-pulse rounded-xl border border-obsidian-700/30 bg-obsidian-800/20" />
             ))}
           </div>
         )}
 
         {/* Error */}
         {!loading && error && (
-          <div className="rounded-xl border border-red-800/40 bg-red-900/10 p-4">
-            <p className="text-sm text-red-300">Could not load credentials. Check your connection.</p>
-            <button className="mt-3 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white" onClick={() => void refresh()}>
+          <div className="rounded-xl border border-rose-800/40 bg-rose-900/10 p-4">
+            <p className="text-sm text-rose-300">Could not load credentials. Check your connection.</p>
+            <button className="mt-3 rounded-lg bg-gold-500 px-4 py-2.5 text-xs font-semibold text-obsidian-100" onClick={() => void refresh()}>
               Retry
             </button>
           </div>
@@ -239,49 +239,49 @@ export function HolderView({
         {/* Empty state */}
         {!loading && !error && credentials.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
-            <Wallet className="h-10 w-10 text-gray-600" />
-            <p className="font-medium text-gray-300">No certificates found</p>
-            <p className="text-sm text-gray-500">Ask your university or training provider to issue a certificate to your address.</p>
+            <Wallet className="h-10 w-10 text-obsidian-600" />
+            <p className="font-medium text-obsidian-300">No certificates found</p>
+            <p className="text-sm text-obsidian-500">Ask your university or training provider to issue a certificate to your address.</p>
           </div>
         )}
 
         {/* Credentials list */}
         {!loading && !error && credentials.length > 0 && (
-          <div className="space-y-4">
-            {truncated && <p className="text-xs text-yellow-400/80">Showing first {MAX_VISIBLE_CREDENTIALS} credentials.</p>}
+          <div className="space-y-6">
+            {truncated && <p className="text-xs text-gold-400/80">Showing first {MAX_VISIBLE_CREDENTIALS} credentials.</p>}
             {presentationError && (
-              <div className="flex items-start gap-2 rounded-lg border border-amber-700/40 bg-amber-900/10 px-3 py-2">
-                <FileSignature className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
-                <p className="text-xs text-amber-300">{presentationError}</p>
+              <div className="flex items-start gap-2 rounded-lg border border-gold-700/40 bg-gold-900/10 px-4 py-2.5">
+                <FileSignature className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold-400" />
+                <p className="text-xs text-gold-300">{presentationError}</p>
               </div>
             )}
 
             {/* Filters */}
             <div>
               <button
-                className="flex items-center gap-1.5 text-xs text-gray-500 transition-colors hover:text-gray-300"
+                className="flex items-center gap-1.5 text-xs text-obsidian-500 transition-colors hover:text-obsidian-300"
                 onClick={() => setShowFilters((v) => !v)}
               >
                 {showFilters ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 Filters & sorting
               </button>
               {showFilters && (
-                <div className="mt-2 grid gap-2 rounded-xl border border-gray-800/40 bg-gray-800/10 p-3 sm:grid-cols-2 md:grid-cols-3">
-                  <select className="rounded-lg border border-gray-700/60 bg-gray-800/50 px-2.5 py-1.5 text-xs text-gray-100" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                <div className="mt-2 grid gap-2 rounded-xl border border-obsidian-700/40 bg-obsidian-800/10 p-3 sm:grid-cols-2 md:grid-cols-3">
+                  <select className="rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-2.5 py-1.5 text-xs text-obsidian-100" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
                     <option value="all">All types</option>
                     {typeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
-                  <select className="rounded-lg border border-gray-700/60 bg-gray-800/50 px-2.5 py-1.5 text-xs text-gray-100" value={validityFilter} onChange={(e) => setValidityFilter(e.target.value as ValidityFilter)}>
+                  <select className="rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-2.5 py-1.5 text-xs text-obsidian-100" value={validityFilter} onChange={(e) => setValidityFilter(e.target.value as ValidityFilter)}>
                     <option value="all">All validity</option>
                     <option value="valid">Valid only</option>
                     <option value="invalid">Invalid only</option>
                   </select>
-                  <select className="rounded-lg border border-gray-700/60 bg-gray-800/50 px-2.5 py-1.5 text-xs text-gray-100" value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value as VisibilityFilter)}>
+                  <select className="rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-2.5 py-1.5 text-xs text-obsidian-100" value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value as VisibilityFilter)}>
                     <option value="all">All visibility</option>
                     <option value="public">Has public fields</option>
                     <option value="private">Has private fields</option>
                   </select>
-                  <select className="rounded-lg border border-gray-700/60 bg-gray-800/50 px-2.5 py-1.5 text-xs text-gray-100" value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}>
+                  <select className="rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-2.5 py-1.5 text-xs text-obsidian-100" value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}>
                     <option value="issued_desc">Newest first</option>
                     <option value="issued_asc">Oldest first</option>
                     <option value="type_asc">Type A-Z</option>
@@ -289,23 +289,23 @@ export function HolderView({
                     <option value="status_asc">Status A-Z</option>
                     <option value="status_desc">Status Z-A</option>
                   </select>
-                  <input type="date" className="rounded-lg border border-gray-700/60 bg-gray-800/50 px-2.5 py-1.5 text-xs text-gray-100" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="From date" />
-                  <input type="date" className="rounded-lg border border-gray-700/60 bg-gray-800/50 px-2.5 py-1.5 text-xs text-gray-100" value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="To date" />
+                  <input type="date" className="rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-2.5 py-1.5 text-xs text-obsidian-100" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="From date" />
+                  <input type="date" className="rounded-lg border border-obsidian-700/60 bg-obsidian-800/50 px-2.5 py-1.5 text-xs text-obsidian-100" value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="To date" />
                 </div>
               )}
             </div>
 
             {/* View mode + count */}
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-obsidian-500">
                 {filteredCredentials.length} of {credentials.length} credentials
                 {fetchedAt && <span className="ml-2">· Refreshed: {new Date(fetchedAt).toLocaleTimeString()}</span>}
               </p>
               <div className="flex gap-1">
-                <button className={`rounded-lg p-1.5 ${viewMode === "grid" ? "bg-indigo-600/20 text-indigo-300" : "text-gray-500"}`} onClick={() => setViewMode("grid")} title="Grid view">
+                <button className={`rounded-lg p-1.5 ${viewMode === "grid" ? "bg-gold-800/20 text-gold-400" : "text-obsidian-500"}`} onClick={() => setViewMode("grid")} title="Grid view">
                   <LayoutGrid className="h-4 w-4" />
                 </button>
-                <button className={`rounded-lg p-1.5 ${viewMode === "list" ? "bg-indigo-600/20 text-indigo-300" : "text-gray-500"}`} onClick={() => setViewMode("list")} title="List view">
+                <button className={`rounded-lg p-1.5 ${viewMode === "list" ? "bg-gold-800/20 text-gold-400" : "text-obsidian-500"}`} onClick={() => setViewMode("list")} title="List view">
                   <List className="h-4 w-4" />
                 </button>
               </div>
@@ -320,28 +320,28 @@ export function HolderView({
                 const isExpanded = expanded[credential.id];
 
                 return (
-                  <div key={credential.id} className="rounded-xl border border-gray-800/40 bg-gray-800/10 p-4 transition-colors hover:border-gray-700/60">
+                  <div key={credential.id} className="rounded-xl border border-obsidian-700/40 bg-obsidian-800/10 p-4 transition-colors hover:border-obsidian-700/60">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-medium text-gray-100">{credType}</p>
-                        <p className="mt-0.5 font-mono text-[11px] text-gray-500">{truncateId(credential.id)}</p>
+                        <p className="text-sm font-medium text-obsidian-100">{credType}</p>
+                        <p className="mt-0.5 font-mono text-[11px] text-obsidian-500">{truncateId(credential.id)}</p>
                       </div>
                       <StatusBadge status={credential.verdict.status} />
                     </div>
 
                     {credential.domain_id && (
-                      <p className="mt-1.5 text-[11px] text-gray-500">Domain: {truncateId(credential.domain_id)}</p>
+                      <p className="mt-1.5 text-[11px] text-obsidian-500">Domain: {truncateId(credential.domain_id)}</p>
                     )}
                     {issuedAt && (
-                      <p className="text-[11px] text-gray-500">Issued: {new Date(issuedAt).toLocaleDateString()}</p>
+                      <p className="text-[11px] text-obsidian-500">Issued: {new Date(issuedAt).toLocaleDateString()}</p>
                     )}
                     {credential.asset_meta_preview && (
-                      <p className="mt-1 text-xs italic text-gray-400">{credential.asset_meta_preview}</p>
+                      <p className="mt-1 text-xs italic text-obsidian-400">{credential.asset_meta_preview}</p>
                     )}
 
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       <button
-                        className="flex items-center gap-1 rounded-lg border border-gray-700/50 px-2.5 py-1.5 text-[11px] text-gray-300 transition-colors hover:text-white"
+                        className="flex items-center gap-1 rounded-lg border border-obsidian-700/50 px-2.5 py-1.5 text-[11px] text-obsidian-300 transition-colors hover:text-obsidian-100"
                         onClick={async () => {
                           await navigator.clipboard.writeText(`${window.location.origin}?verify=${encodeURIComponent(credential.id)}`);
                           setCopiedId(`share:${credential.id}`);
@@ -352,14 +352,14 @@ export function HolderView({
                         {copiedId === `share:${credential.id}` ? "Copied!" : "Copy verification link"}
                       </button>
                       <button
-                        className="flex items-center gap-1 rounded-lg border border-gray-700/50 px-2.5 py-1.5 text-[11px] text-gray-300 transition-colors hover:text-white"
+                        className="flex items-center gap-1 rounded-lg border border-obsidian-700/50 px-2.5 py-1.5 text-[11px] text-obsidian-300 transition-colors hover:text-obsidian-100"
                         onClick={() => setQrUrl(`${window.location.origin}?verify=${encodeURIComponent(credential.id)}`)}
                       >
                         <QrCode className="h-3 w-3" />
                         QR
                       </button>
                       <button
-                        className="flex items-center gap-1 rounded-lg border border-gray-700/50 px-2.5 py-1.5 text-[11px] text-gray-300 transition-colors hover:text-white"
+                        className="flex items-center gap-1 rounded-lg border border-obsidian-700/50 px-2.5 py-1.5 text-[11px] text-obsidian-300 transition-colors hover:text-obsidian-100"
                         onClick={() => { setPresentationUrls((prev) => { const n = { ...prev }; delete n[credential.id]; return n; }); presentCredential(credential); }}
                       >
                         <FileSignature className="h-3 w-3" />
@@ -367,7 +367,7 @@ export function HolderView({
                       </button>
                       {presentationUrls[credential.id] && (
                         <button
-                          className="flex items-center gap-1 rounded-lg border border-indigo-600/50 bg-indigo-950/30 px-2.5 py-1.5 text-[11px] text-indigo-300 transition-colors hover:bg-indigo-600/20"
+                          className="flex items-center gap-1 rounded-lg border border-gold-600/50 bg-gold-800/30 px-2.5 py-1.5 text-[11px] text-gold-400 transition-colors hover:bg-gold-800/20"
                           onClick={async () => {
                             await navigator.clipboard.writeText(presentationUrls[credential.id]);
                             setCopiedId(`present:${credential.id}`);
@@ -379,14 +379,14 @@ export function HolderView({
                         </button>
                       )}
                       <button
-                        className="flex items-center gap-1 rounded-lg bg-indigo-600/20 px-2.5 py-1.5 text-[11px] text-indigo-300 transition-colors hover:bg-indigo-600/30"
+                        className="flex items-center gap-1 rounded-lg bg-gold-800/20 px-2.5 py-1.5 text-[11px] text-gold-400 transition-colors hover:bg-gold-700/20"
                         onClick={() => onNavigateToVerify(credential.id)}
                       >
                         <ExternalLink className="h-3 w-3" />
                         Verify
                       </button>
                       <button
-                        className="flex items-center gap-1 rounded-lg border border-gray-700/50 px-2.5 py-1.5 text-[11px] text-gray-300 transition-colors hover:text-white"
+                        className="flex items-center gap-1 rounded-lg border border-obsidian-700/50 px-2.5 py-1.5 text-[11px] text-obsidian-300 transition-colors hover:text-obsidian-100"
                         onClick={async () => {
                           await navigator.clipboard.writeText(credential.id);
                           setCopiedId(`id:${credential.id}`);
@@ -397,7 +397,7 @@ export function HolderView({
                         {copiedId === `id:${credential.id}` ? "Copied!" : "Copy ID"}
                       </button>
                       <button
-                        className="flex items-center gap-1 rounded-lg border border-gray-700/50 px-2.5 py-1.5 text-[11px] text-gray-300 transition-colors hover:text-white"
+                        className="flex items-center gap-1 rounded-lg border border-obsidian-700/50 px-2.5 py-1.5 text-[11px] text-obsidian-300 transition-colors hover:text-obsidian-100"
                         onClick={() => setExpanded((prev) => ({ ...prev, [credential.id]: !prev[credential.id] }))}
                       >
                         {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}

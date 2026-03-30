@@ -28,7 +28,7 @@ export function GettingStarted({
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4">
-      <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+      <div className="rounded-xl border border-obsidian-700 bg-obsidian-900 p-4">
         <div className="grid gap-2 md:grid-cols-5">
           {STEPS.map((step) => {
             const done = completed.has(step.id);
@@ -37,10 +37,10 @@ export function GettingStarted({
               <button
                 key={step.id}
                 onClick={() => (done || active) && onNavigate(step.tab)}
-                className={`rounded-lg border px-3 py-2 text-left ${done ? "border-green-700 bg-green-950/30 text-gray-300" : active ? "border-indigo-500 bg-indigo-950/30 text-white shadow-md shadow-indigo-950" : "border-gray-700 bg-gray-950/50 text-gray-500"}`}
+                className={`rounded-lg border px-3 py-2 text-left ${done ? "border-sage-700 bg-sage-950/30 text-obsidian-300" : active ? "border-gold-600 bg-gold-800/30 text-obsidian-100 shadow-md shadow-obsidian-950" : "border-obsidian-700 bg-obsidian-950/50 text-obsidian-500"}`}
               >
                 <div className="flex items-center gap-2 text-xs">
-                  <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full border ${done ? "border-green-500 text-green-300" : active ? "border-indigo-400 text-indigo-200" : "border-gray-600 text-gray-500"}`}>
+                  <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full border ${done ? "border-sage-500 text-sage-300" : active ? "border-gold-400 text-gold-300" : "border-obsidian-600 text-obsidian-500"}`}>
                     {done ? "✓" : step.id}
                   </span>
                   <span>{step.icon}</span>
@@ -50,7 +50,7 @@ export function GettingStarted({
             );
           })}
         </div>
-        <p className="mt-3 text-sm text-gray-300">{HINTS[current]}</p>
+        <p className="mt-3 text-sm text-obsidian-300">{HINTS[current]}</p>
       </div>
     </div>
   );

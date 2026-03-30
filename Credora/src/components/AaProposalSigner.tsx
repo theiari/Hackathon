@@ -137,39 +137,39 @@ export function AaProposalSigner({
   const submitTxState: TxState = submitting ? "pending_chain" : result?.submitted ? "success" : "idle";
 
   return (
-    <div className="space-y-4 rounded-xl border border-indigo-800 bg-indigo-950/30 p-4">
+    <div className="space-y-4 rounded-xl border border-gold-700 bg-gold-800/30 p-4">
       <div>
-        <h4 className="text-sm font-semibold text-white">
+        <h4 className="text-sm font-semibold text-obsidian-100">
           AA Governance — {threshold}-of-{signerCount} required
         </h4>
-        {actionDescription && <p className="text-xs text-gray-400">{actionDescription}</p>}
+        {actionDescription && <p className="text-xs text-obsidian-400">{actionDescription}</p>}
       </div>
 
-      {loadingIntent && <p className="text-xs text-gray-400">Loading governance intent...</p>}
+      {loadingIntent && <p className="text-xs text-obsidian-400">Loading governance intent...</p>}
 
       {/* Progress bar */}
       <div className="flex items-center gap-2">
         {Array.from({ length: displayCount }).map((_, i) => (
           <div
             key={i}
-            className={`h-4 w-4 rounded-full border ${i < sigsHex.length ? "border-indigo-500 bg-indigo-500" : "border-gray-600 bg-gray-800"}`}
+            className={`h-4 w-4 rounded-full border ${i < sigsHex.length ? "border-gold-600 bg-gold-400" : "border-obsidian-600 bg-obsidian-800"}`}
           />
         ))}
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-obsidian-400">
           {sigsHex.length} / {threshold} required collected
         </span>
       </div>
 
       {/* Signing area */}
       {!account ? (
-        <p className="text-xs text-gray-400">Connect your wallet to sign.</p>
+        <p className="text-xs text-obsidian-400">Connect your wallet to sign.</p>
       ) : (
         <div className="space-y-2">
-          <p className="text-xs text-gray-300">
+          <p className="text-xs text-obsidian-300">
             Connected: {account.address.slice(0, 8)}...{account.address.slice(-4)}
           </p>
           <button
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-60"
+            className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-obsidian-100 hover:bg-gold-400 disabled:opacity-60"
             disabled={signing || !txBytesB64 || result?.submitted === true}
             onClick={handleSign}
           >
@@ -181,19 +181,19 @@ export function AaProposalSigner({
       {/* Share link */}
       {sigsHex.length < threshold && txBytesB64 && (
         <div className="space-y-1">
-          <p className="text-xs text-gray-400">Share with co-signers:</p>
+          <p className="text-xs text-obsidian-400">Share with co-signers:</p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 overflow-hidden text-ellipsis rounded bg-gray-800 px-2 py-1 text-xs text-gray-300">
+            <code className="flex-1 overflow-hidden text-ellipsis rounded bg-obsidian-800 px-2 py-1 text-xs text-obsidian-300">
               {shareUrl}
             </code>
             <button
-              className="rounded border border-gray-600 px-2 py-1 text-xs text-indigo-300"
+              className="rounded border border-obsidian-600 px-2 py-1 text-xs text-gold-400"
               onClick={() => navigator.clipboard.writeText(shareUrl)}
             >
               Copy
             </button>
           </div>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-obsidian-500">
             Other signers open this link, connect their wallet, and sign.
           </p>
         </div>
@@ -202,7 +202,7 @@ export function AaProposalSigner({
       {/* Submit section */}
       {sigsHex.length >= threshold && (
         <div className="space-y-2">
-          <div className="rounded-lg border border-green-700 bg-green-950/40 p-2 text-sm text-green-300">
+          <div className="rounded-lg border border-sage-700 bg-sage-950/40 p-2 text-sm text-sage-300">
             Threshold reached ({sigsHex.length}/{threshold})
           </div>
           <TxButton state={submitTxState} onClick={() => void handleSubmit()}>
@@ -210,25 +210,25 @@ export function AaProposalSigner({
           </TxButton>
 
           {result?.submitted && result.digest && (
-            <p className="text-sm text-green-400">Submitted! Digest: {result.digest}</p>
+            <p className="text-sm text-sage-400">Submitted! Digest: {result.digest}</p>
           )}
 
           {result?.submitted === false && (
             <div className="space-y-2">
-              <p className="text-sm text-red-400">Submission failed: {result.error}</p>
+              <p className="text-sm text-rose-400">Submission failed: {result.error}</p>
               <button
-                className="text-xs text-gray-400 underline"
+                className="text-xs text-obsidian-400 underline"
                 onClick={() => setShowDebug((v) => !v)}
               >
                 Debug info {showDebug ? "▴" : "▾"}
               </button>
               {showDebug && result.proof_bytes_b64 && (
                 <div className="space-y-2">
-                  <pre className="overflow-x-auto rounded bg-gray-950 p-2 text-[10px] text-gray-400">
+                  <pre className="overflow-x-auto rounded bg-obsidian-950 p-2 text-[10px] text-obsidian-400">
                     {result.proof_bytes_b64}
                   </pre>
-                  <p className="text-xs text-gray-400">You can submit manually with the IOTA CLI:</p>
-                  <pre className="overflow-x-auto rounded bg-gray-950 p-2 text-[10px] text-gray-400">
+                  <p className="text-xs text-obsidian-400">You can submit manually with the IOTA CLI:</p>
+                  <pre className="overflow-x-auto rounded bg-obsidian-950 p-2 text-[10px] text-obsidian-400">
 {`iota client execute-signed-tx \\
   --tx-bytes ${txBytesB64} \\
   --signatures ${result.proof_bytes_b64}`}
@@ -236,7 +236,7 @@ export function AaProposalSigner({
                 </div>
               )}
               <button
-                className="rounded border border-gray-600 px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800"
+                className="rounded border border-obsidian-600 px-3 py-1.5 text-xs text-obsidian-300 hover:bg-obsidian-800"
                 onClick={() => onFallbackToManual?.()}
               >
                 Use manual decree instead →
@@ -246,7 +246,7 @@ export function AaProposalSigner({
         </div>
       )}
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-rose-400">{error}</p>}
     </div>
   );
 }
